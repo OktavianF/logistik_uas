@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Edit, Trash2, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,11 +17,8 @@ interface Courier {
 
 const Couriers = () => {
   const { toast } = useToast();
-  const [couriers, setCouriers] = useState<Courier[]>([
-    { courier_id: 1, name: "Ahmad Rizki", phone: "0812-3456-7890", region: "Jakarta Selatan" },
-    { courier_id: 2, name: "Budi Santoso", phone: "0813-8765-4321", region: "Bandung" },
-    { courier_id: 3, name: "Citra Dewi", phone: "0814-5566-7788", region: "Surabaya" }
-  ]);
+  const [couriers, setCouriers] = useState<Courier[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -30,28 +27,73 @@ const Couriers = () => {
     region: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const normalizeCourierRow = (r: any): Courier => ({
+    courier_id: r.COURIER_ID ?? r.courier_id,
+    name: r.NAME ?? r.name,
+    phone: r.PHONE ?? r.phone,
+    region: r.REGION ?? r.region
+  });
+
+  const fetchCouriers = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/couriers`, { cache: "no-store", headers: { "Cache-Control": "no-cache" } });
+      const body = await res.json();
+      if (body.success && Array.isArray(body.data)) {
+        setCouriers(body.data.map(normalizeCourierRow));
+      } else {
+        throw new Error(body.error || 'Invalid response');
+      }
+    } catch (err: any) {
+      console.error('Failed fetching couriers', err);
+      toast({ title: 'Error', description: `Gagal memuat kurir: ${err.message || err}` });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchCouriers();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newCourier: Courier = {
-      courier_id: couriers.length + 1,
-      ...formData
-    };
-    setCouriers([...couriers, newCourier]);
-    setIsDialogOpen(false);
-    setFormData({ name: "", phone: "", region: "" });
-    toast({
-      title: "Berhasil",
-      description: "Kurir berhasil ditambahkan",
-    });
+    try {
+      const res = await fetch(`/api/couriers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      const body = await res.json();
+      if (body.success && body.data) {
+        setCouriers(prev => [...prev, normalizeCourierRow(body.data)]);
+        setIsDialogOpen(false);
+        setFormData({ name: '', phone: '', region: '' });
+        toast({ title: 'Berhasil', description: 'Kurir berhasil ditambahkan' });
+      } else {
+        throw new Error(body.error || 'Create failed');
+      }
+    } catch (err: any) {
+      console.error('Create courier failed', err);
+      toast({ title: 'Error', description: `Gagal menambah kurir: ${err.message || err}` });
+    }
   };
 
-  const handleDelete = (id: number) => {
-    setCouriers(couriers.filter(c => c.courier_id !== id));
-    toast({
-      title: "Berhasil",
-      description: "Kurir berhasil dihapus",
-      variant: "destructive"
-    });
+  const handleDelete = async (id: number) => {
+    if (!confirm('Hapus kurir ini?')) return;
+    try {
+      const res = await fetch(`/api/couriers/${id}`, { method: 'DELETE' });
+      const body = await res.json();
+      if (body.success) {
+        setCouriers(prev => prev.filter(c => c.courier_id !== id));
+        toast({ title: 'Berhasil', description: 'Kurir berhasil dihapus', variant: 'destructive' });
+      } else {
+        throw new Error(body.error || 'Delete failed');
+      }
+    } catch (err: any) {
+      console.error('Delete courier failed', err);
+      toast({ title: 'Error', description: `Gagal menghapus kurir: ${err.message || err}` });
+    }
   };
 
   return (
@@ -117,13 +159,13 @@ const Couriers = () => {
         </div>
 
         <Card>
-          <CardHeader className="bg-gradient-to-r from-primary/5 to-accent/5">
-            <CardTitle className="flex items-center gap-2">
-              <Truck className="h-5 w-5 text-primary" />
-              Daftar Kurir
-            </CardTitle>
-            <CardDescription>Total {couriers.length} kurir terdaftar</CardDescription>
-          </CardHeader>
+            <CardHeader className="bg-gradient-to-r from-primary/5 to-accent/5">
+              <CardTitle className="flex items-center gap-2">
+                <Truck className="h-5 w-5 text-primary" />
+                Daftar Kurir
+              </CardTitle>
+              <CardDescription>{loading ? 'Memuat...' : `Total ${couriers.length} kurir terdaftar`}</CardDescription>
+            </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>

@@ -28,12 +28,14 @@ const customerRoutes = require("./routes/customerRoutes");
 const courierRoutes = require("./routes/courierRoutes");
 const shipmentRoutes = require("./routes/shipmentRoutes");
 const reportRoutes = require("./routes/reportRoutes");
+const debugRoutes = require("./routes/debugRoutes");
 
 // Use routes
 app.use("/api/customers", customerRoutes);
 app.use("/api/couriers", courierRoutes);
 app.use("/api/shipments", shipmentRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/debug", debugRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -5,7 +5,16 @@ require("dotenv").config();
 oracledb.outFormat = oracledb.OUT_FORMAT_OBJECT;
 
 // Uncomment and set this if you need to specify Oracle Instant Client path
-oracledb.initOracleClient({ libDir: '/opt/oracle/instantclient_23_3' });
+// oracledb.initOracleClient({ libDir: '/opt/oracle/instantclient_23_3' });
+if (process.env.ORACLE_LIB_DIR) {
+  try {
+    oracledb.initOracleClient({ libDir: process.env.ORACLE_LIB_DIR });
+    console.log('Oracle Instant Client initialized from', process.env.ORACLE_LIB_DIR);
+  } catch (err) {
+    console.warn('Warning: failed to initialize Oracle Instant Client from', process.env.ORACLE_LIB_DIR, err.message || err);
+    // Do not throw here — allow the application to continue and surface errors when trying to connect.
+  }
+}
 
 let pool;
 

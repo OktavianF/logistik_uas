@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Edit, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,11 +17,8 @@ interface Customer {
 
 const Customers = () => {
   const { toast } = useToast();
-  const [customers, setCustomers] = useState<Customer[]>([
-    { customer_id: 1, name: "PT. Maju Jaya", address: "Jl. Sudirman No. 123, Jakarta", phone: "021-12345678" },
-    { customer_id: 2, name: "CV. Berkah Sentosa", address: "Jl. Asia Afrika No. 45, Bandung", phone: "022-87654321" },
-    { customer_id: 3, name: "UD. Cahaya Mandiri", address: "Jl. Pemuda No. 78, Surabaya", phone: "031-55667788" }
-  ]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -30,28 +27,73 @@ const Customers = () => {
     phone: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newCustomer: Customer = {
-      customer_id: customers.length + 1,
-      ...formData
-    };
-    setCustomers([...customers, newCustomer]);
-    setIsDialogOpen(false);
-    setFormData({ name: "", address: "", phone: "" });
-    toast({
-      title: "Berhasil",
-      description: "Pelanggan berhasil ditambahkan",
-    });
+  const normalizeCustomerRow = (r: any): Customer => ({
+    customer_id: r.CUSTOMER_ID ?? r.customer_id,
+    name: r.NAME ?? r.name,
+    address: r.ADDRESS ?? r.address,
+    phone: r.PHONE ?? r.phone
+  });
+
+  const fetchCustomers = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/customers`, { cache: "no-store", headers: { "Cache-Control": "no-cache" } });
+      const body = await res.json();
+      if (body.success && Array.isArray(body.data)) {
+        setCustomers(body.data.map(normalizeCustomerRow));
+      } else {
+        throw new Error(body.error || "Invalid response");
+      }
+    } catch (err: any) {
+      console.error("Failed fetching customers", err);
+      toast({ title: "Error", description: `Gagal memuat pelanggan: ${err.message || err}` });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = (id: number) => {
-    setCustomers(customers.filter(c => c.customer_id !== id));
-    toast({
-      title: "Berhasil",
-      description: "Pelanggan berhasil dihapus",
-      variant: "destructive"
-    });
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/customers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+      });
+      const body = await res.json();
+      if (body.success && body.data) {
+        setCustomers(prev => [...prev, normalizeCustomerRow(body.data)]);
+        setIsDialogOpen(false);
+        setFormData({ name: "", address: "", phone: "" });
+        toast({ title: "Berhasil", description: "Pelanggan berhasil ditambahkan" });
+      } else {
+        throw new Error(body.error || 'Create failed');
+      }
+    } catch (err: any) {
+      console.error("Create customer failed", err);
+      toast({ title: "Error", description: `Gagal menambah pelanggan: ${err.message || err}` });
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Hapus pelanggan ini?")) return;
+    try {
+      const res = await fetch(`/api/customers/${id}`, { method: "DELETE" });
+      const body = await res.json();
+      if (body.success) {
+        setCustomers(prev => prev.filter(c => c.customer_id !== id));
+        toast({ title: "Berhasil", description: "Pelanggan berhasil dihapus", variant: "destructive" });
+      } else {
+        throw new Error(body.error || 'Delete failed');
+      }
+    } catch (err: any) {
+      console.error("Delete customer failed", err);
+      toast({ title: "Error", description: `Gagal menghapus pelanggan: ${err.message || err}` });
+    }
   };
 
   return (
@@ -117,13 +159,13 @@ const Customers = () => {
         </div>
 
         <Card>
-          <CardHeader className="bg-gradient-to-r from-primary/5 to-accent/5">
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-primary" />
-              Daftar Pelanggan
-            </CardTitle>
-            <CardDescription>Total {customers.length} pelanggan terdaftar</CardDescription>
-          </CardHeader>
+            <CardHeader className="bg-gradient-to-r from-primary/5 to-accent/5">
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                Daftar Pelanggan
+              </CardTitle>
+              <CardDescription>{loading ? 'Memuat...' : `Total ${customers.length} pelanggan terdaftar`}</CardDescription>
+            </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
