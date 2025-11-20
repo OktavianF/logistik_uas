@@ -1,12 +1,12 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, Outlet } from "react-router-dom";
 import { LayoutDashboard, Users, Truck, Package, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const Layout = ({ children }: { children: React.ReactNode }) => {
-  const location = useLocation();
+const Layout = () => {
+const location = useLocation();
 
   const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
     { icon: Users, label: "Pelanggan", path: "/customers" },
     { icon: Truck, label: "Kurir", path: "/couriers" },
     { icon: Package, label: "Pengiriman", path: "/shipments" },
@@ -49,7 +49,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           </nav>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex-1 overflow-auto gradient-subtle animate-fade-in p-6">
+      <Outlet />
+      </main>
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
+import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import Couriers from "./pages/Couriers";
@@ -19,17 +20,18 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/customers" element={<Customers />} />
-            <Route path="/couriers" element={<Couriers />} />
-            <Route path="/shipments" element={<Shipments />} />
-            <Route path="/tracking" element={<Tracking />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Routes>
+          <Route path="/" element={<Landing />} />
+            <Route element={<Layout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/customers" element={<Customers />} />
+              <Route path="/couriers" element={<Couriers />} />
+              <Route path="/shipments" element={<Shipments />} />
+              <Route path="/tracking" element={<Tracking />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            </Route>
             <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Layout>
+        </Routes>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
