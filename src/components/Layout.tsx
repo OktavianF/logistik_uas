@@ -1,9 +1,55 @@
-import { Link, useLocation, Outlet } from "react-router-dom";
-import { LayoutDashboard, Users, Truck, Package, MapPin } from "lucide-react";
+import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { LayoutDashboard, Users, Truck, Package, MapPin, LogOut, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Layout = () => {
 const location = useLocation();
+const navigate = useNavigate();
+const [user, setUser] = useState<any>(null);
+
+  const parseJwt = (token?: string | null) => {
+    try {
+      if (!token) return null;
+      const parts = token.split('.');
+      if (parts.length < 2) return null;
+      // base64url -> base64
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    const payload = parseJwt(token);
+    if (payload) setUser(payload);
+  }, []);
+
+  const signOut = () => {
+    try {
+      localStorage.removeItem('auth_token');
+    } catch (e) {}
+    setUser(null);
+    navigate('/auth');
+  };
 
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -47,6 +93,35 @@ const location = useLocation();
               );
             })}
           </nav>
+          </div>
+        
+        <div className="p-6 border-t border-sidebar-border">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
+                    <User className="h-4 w-4 text-primary-foreground" />
+                  </div>
+                  <div className="flex flex-col items-start">
+                    <span className="text-sm font-medium">{user?.user_metadata?.full_name || 'User'}</span>
+                    <span className="text-xs text-sidebar-foreground/60">{user?.email}</span>
+                  </div>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Akun Saya</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={signOut} className="text-destructive cursor-pointer">
+                <LogOut className="mr-2 h-4 w-4" />
+                Keluar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
       <main className="flex-1 overflow-auto gradient-subtle animate-fade-in p-6">

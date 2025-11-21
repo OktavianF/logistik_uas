@@ -8,9 +8,11 @@ import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import Couriers from "./pages/Couriers";
+import Auth from "./pages/Auth";
 import Shipments from "./pages/Shipments";
 import Tracking from "./pages/Tracking";
 import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -22,12 +24,13 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/auth" element={<Auth />} />
             <Route element={<Layout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/customers" element={<Customers />} />
-              <Route path="/couriers" element={<Couriers />} />
-              <Route path="/shipments" element={<Shipments />} />
-              <Route path="/tracking" element={<Tracking />} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
+              <Route path="/couriers" element={<ProtectedRoute><Couriers /></ProtectedRoute>} />
+              <Route path="/shipments" element={<ProtectedRoute><Shipments /></ProtectedRoute>} />
+              <Route path="/tracking" element={<ProtectedRoute><Tracking /></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             </Route>
             <Route path="*" element={<NotFound />} />

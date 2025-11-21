@@ -1,5 +1,6 @@
 import { Package, Truck, Users, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -10,11 +11,20 @@ const Dashboard = () => {
     totalCustomers: '—',
     totalRegions: '—'
   });
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        const res = await fetch('/api/shipments/metrics');
+        const token = localStorage.getItem('auth_token');
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const res = await fetch('/api/shipments/metrics', { headers });
+        if (res.status === 401) {
+          navigate('/auth');
+          return;
+        }
         const body = await res.json();
         if (body && body.success && body.data) {
           setMetrics({
@@ -62,7 +72,15 @@ const Dashboard = () => {
     const fetchDashboard = async () => {
       setLoading(true);
       try {
-        const res = await fetch('/api/shipments/dashboard', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
+        const token = localStorage.getItem('auth_token');
+        const headers: Record<string, string> = { 'Cache-Control': 'no-cache' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const res = await fetch('/api/shipments/dashboard', { cache: 'no-store', headers });
+        if (res.status === 401) {
+          navigate('/auth');
+          return;
+        }
         const body = await res.json();
         if (body && body.success && Array.isArray(body.data)) {
           const mapped = body.data.map((r: any) => {

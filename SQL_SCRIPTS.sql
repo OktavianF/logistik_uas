@@ -47,9 +47,21 @@ CREATE SEQUENCE status_log_seq
   NOCACHE
   NOCYCLE;
 
+CREATE SEQUENCE users_seq START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+
+
 -- ============================
 -- 3. CREATE TABLES
 -- ============================
+
+-- Table: USERS
+CREATE TABLE USERS (
+  user_id      NUMBER PRIMARY KEY,
+  email        VARCHAR2(255) NOT NULL UNIQUE,
+  password_hash VARCHAR2(200) NOT NULL,
+  full_name    VARCHAR2(200),
+  created_at   TIMESTAMP DEFAULT SYSTIMESTAMP
+);
 
 -- Table: CUSTOMERS
 CREATE TABLE CUSTOMERS (

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, Edit, Trash2, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,7 +38,10 @@ const Couriers = () => {
   const fetchCouriers = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/couriers`, { cache: "no-store", headers: { "Cache-Control": "no-cache" } });
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      const headers: Record<string,string> = { "Cache-Control": "no-cache" };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(`/api/couriers`, { cache: "no-store", headers });
       const body = await res.json();
       if (body.success && Array.isArray(body.data)) {
         setCouriers(body.data.map(normalizeCourierRow));
@@ -59,9 +63,12 @@ const Couriers = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      const headers: Record<string,string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await fetch(`/api/couriers`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(formData)
       });
       const body = await res.json();
@@ -82,7 +89,10 @@ const Couriers = () => {
   const handleDelete = async (id: number) => {
     if (!confirm('Hapus kurir ini?')) return;
     try {
-      const res = await fetch(`/api/couriers/${id}`, { method: 'DELETE' });
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      const headers: Record<string,string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(`/api/couriers/${id}`, { method: 'DELETE', headers });
       const body = await res.json();
       if (body.success) {
         setCouriers(prev => prev.filter(c => c.courier_id !== id));

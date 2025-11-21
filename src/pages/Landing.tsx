@@ -26,12 +26,12 @@ const Landing = () => {
             Kelola pengiriman, kurir, dan pelanggan Anda dengan sistem manajemen logistik terpadu dan real-time tracking
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
-            <Link to="/dashboard">
+            <Link to="/auth">
               <Button size="lg" className="gradient-primary shadow-lg hover:shadow-xl text-lg px-8">
                 Mulai Sekarang
               </Button>
             </Link>
-            <Link to="/tracking">
+            <Link to="/auth">
               <Button size="lg" variant="outline" className="text-lg px-8 border-2 hover:border-primary">
                 Lacak Paket
               </Button>
@@ -169,7 +169,7 @@ const Landing = () => {
           <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto">
             Bergabunglah dengan ribuan bisnis yang sudah mempercayai sistem kami untuk mengelola logistik mereka
           </p>
-          <Link to="/dashboard">
+          <Link to="/auth">
             <Button size="lg" className="gradient-primary shadow-lg hover:shadow-xl text-lg px-12">
               Coba Gratis Sekarang
             </Button>

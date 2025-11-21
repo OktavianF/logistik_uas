@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, Search, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,7 +41,16 @@ const Shipments = () => {
     const fetchShipments = async () => {
       setLoading(true);
       try {
-        const res = await fetch('/api/shipments', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
+        const token = localStorage.getItem('auth_token');
+        const headers: Record<string, string> = { 'Cache-Control': 'no-cache' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const res = await fetch('/api/shipments', { cache: 'no-store', headers });
+        if (res.status === 401) {
+          // not authenticated or token invalid — redirect to login
+          navigate('/auth');
+          return;
+        }
         const body = await res.json();
         if (body && body.success && Array.isArray(body.data)) {
           const mapped = body.data.map((r: any) => {
