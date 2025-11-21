@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, Edit, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,8 +38,18 @@ const Customers = () => {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/customers`, { cache: "no-store", headers: { "Cache-Control": "no-cache" } });
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      const headers: Record<string,string> = { "Cache-Control": "no-cache" };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(`/api/customers`, { cache: "no-store", headers });
       const body = await res.json();
+      if (res.status === 401) {
+        // Unauthorized — redirect to login
+        toast({ title: 'Unauthorized', description: 'Silakan login kembali', variant: 'destructive' });
+        navigate('/auth');
+        return;
+      }
+
       if (body.success && Array.isArray(body.data)) {
         setCustomers(body.data.map(normalizeCustomerRow));
       } else {
@@ -59,12 +70,21 @@ const Customers = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      const headers: Record<string,string> = { "Content-Type": "application/json" };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await fetch(`/api/customers`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(formData)
       });
       const body = await res.json();
+      if (res.status === 401) {
+        toast({ title: 'Unauthorized', description: 'Silakan login kembali', variant: 'destructive' });
+        navigate('/auth');
+        return;
+      }
+
       if (body.success && body.data) {
         setCustomers(prev => [...prev, normalizeCustomerRow(body.data)]);
         setIsDialogOpen(false);
@@ -82,7 +102,10 @@ const Customers = () => {
   const handleDelete = async (id: number) => {
     if (!confirm("Hapus pelanggan ini?")) return;
     try {
-      const res = await fetch(`/api/customers/${id}`, { method: "DELETE" });
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      const headers: Record<string,string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(`/api/customers/${id}`, { method: "DELETE", headers });
       const body = await res.json();
       if (body.success) {
         setCustomers(prev => prev.filter(c => c.customer_id !== id));

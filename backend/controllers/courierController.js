@@ -2,7 +2,8 @@ const courierService = require("../services/courierService");
 
 exports.getAllCouriers = async (req, res) => {
   try {
-    const couriers = await courierService.getAllCouriers();
+    const userId = req.user && req.user.user_id;
+    const couriers = await courierService.getAllCouriers(userId);
     res.json({
       success: true,
       data: couriers
@@ -19,7 +20,8 @@ exports.getAllCouriers = async (req, res) => {
 exports.getCourierById = async (req, res) => {
   try {
     const { id } = req.params;
-    const courier = await courierService.getCourierById(id);
+    const userId = req.user && req.user.user_id;
+    const courier = await courierService.getCourierById(id, userId);
     
     if (!courier) {
       return res.status(404).json({
@@ -44,6 +46,7 @@ exports.getCourierById = async (req, res) => {
 exports.createCourier = async (req, res) => {
   try {
     const { name, phone, region } = req.body;
+    const owner_user_id = req.user && req.user.user_id;
     
     if (!name || !phone || !region) {
       return res.status(400).json({
@@ -52,7 +55,7 @@ exports.createCourier = async (req, res) => {
       });
     }
 
-    const result = await courierService.createCourier({ name, phone, region });
+    const result = await courierService.createCourier({ name, phone, region, owner_user_id });
     res.status(201).json({
       success: true,
       data: result,
@@ -71,6 +74,7 @@ exports.updateCourier = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, phone, region } = req.body;
+    const userId = req.user && req.user.user_id;
 
     if (!name || !phone || !region) {
       return res.status(400).json({
@@ -79,7 +83,7 @@ exports.updateCourier = async (req, res) => {
       });
     }
 
-    const result = await courierService.updateCourier(id, { name, phone, region });
+    const result = await courierService.updateCourier(id, { name, phone, region }, userId);
     res.json({
       success: true,
       data: result,
@@ -97,7 +101,8 @@ exports.updateCourier = async (req, res) => {
 exports.deleteCourier = async (req, res) => {
   try {
     const { id } = req.params;
-    await courierService.deleteCourier(id);
+    const userId = req.user && req.user.user_id;
+    await courierService.deleteCourier(id, userId);
     res.json({
       success: true,
       message: "Courier deleted successfully"

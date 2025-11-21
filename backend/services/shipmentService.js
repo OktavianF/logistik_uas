@@ -1,45 +1,79 @@
 const database = require("../config/database");
 const oracledb = require("oracledb");
 
-exports.getAllShipments = async () => {
+exports.getAllShipments = async (userId) => {
   const pool = database.getPool();
   const connection = await pool.getConnection();
-  
+
   try {
-    const result = await connection.execute(
-      `SELECT s.shipment_id, s.tracking_number, s.customer_id, s.courier_id,
-              s.origin, s.destination, s.distance_km, s.service_type,
-              s.shipping_date, s.delivery_estimate, s.delivery_status,
-              c.name as customer_name,
-              co.name as courier_name
-       FROM SHIPMENTS s
-       LEFT JOIN CUSTOMERS c ON s.customer_id = c.customer_id
-       LEFT JOIN COURIERS co ON s.courier_id = co.courier_id
-       ORDER BY s.shipping_date DESC`
-    );
+    let result;
+    if (userId) {
+      result = await connection.execute(
+        `SELECT s.shipment_id, s.tracking_number, s.customer_id, s.courier_id,
+                s.origin, s.destination, s.distance_km, s.service_type,
+                s.shipping_date, s.delivery_estimate, s.delivery_status,
+                c.name as customer_name,
+                co.name as courier_name
+         FROM SHIPMENTS s
+         LEFT JOIN CUSTOMERS c ON s.customer_id = c.customer_id
+         LEFT JOIN COURIERS co ON s.courier_id = co.courier_id
+         WHERE s.owner_user_id = :1
+         ORDER BY s.shipping_date DESC`,
+        [userId]
+      );
+    } else {
+      result = await connection.execute(
+        `SELECT s.shipment_id, s.tracking_number, s.customer_id, s.courier_id,
+                s.origin, s.destination, s.distance_km, s.service_type,
+                s.shipping_date, s.delivery_estimate, s.delivery_status,
+                c.name as customer_name,
+                co.name as courier_name
+         FROM SHIPMENTS s
+         LEFT JOIN CUSTOMERS c ON s.customer_id = c.customer_id
+         LEFT JOIN COURIERS co ON s.courier_id = co.courier_id
+         WHERE s.owner_user_id IS NULL
+         ORDER BY s.shipping_date DESC`
+      );
+    }
     return result.rows;
   } finally {
     await connection.close();
   }
 };
 
-exports.getShipmentByTracking = async (trackingNumber) => {
+exports.getShipmentByTracking = async (trackingNumber, userId) => {
   const pool = database.getPool();
   const connection = await pool.getConnection();
   
   try {
-    const result = await connection.execute(
-      `SELECT s.shipment_id, s.tracking_number, s.customer_id, s.courier_id,
-              s.origin, s.destination, s.distance_km, s.service_type,
-              s.shipping_date, s.delivery_estimate, s.delivery_status,
-              c.name as customer_name, c.address as customer_address, c.phone as customer_phone,
-              co.name as courier_name, co.phone as courier_phone, co.region as courier_region
-       FROM SHIPMENTS s
-       LEFT JOIN CUSTOMERS c ON s.customer_id = c.customer_id
-       LEFT JOIN COURIERS co ON s.courier_id = co.courier_id
-       WHERE s.tracking_number = :tracking`,
-      [trackingNumber]
-    );
+    let result;
+    if (userId) {
+      result = await connection.execute(
+        `SELECT s.shipment_id, s.tracking_number, s.customer_id, s.courier_id,
+                s.origin, s.destination, s.distance_km, s.service_type,
+                s.shipping_date, s.delivery_estimate, s.delivery_status,
+                c.name as customer_name, c.address as customer_address, c.phone as customer_phone,
+                co.name as courier_name, co.phone as courier_phone, co.region as courier_region
+         FROM SHIPMENTS s
+         LEFT JOIN CUSTOMERS c ON s.customer_id = c.customer_id
+         LEFT JOIN COURIERS co ON s.courier_id = co.courier_id
+         WHERE s.tracking_number = :1 AND s.owner_user_id = :2`,
+        [trackingNumber, userId]
+      );
+    } else {
+      result = await connection.execute(
+        `SELECT s.shipment_id, s.tracking_number, s.customer_id, s.courier_id,
+                s.origin, s.destination, s.distance_km, s.service_type,
+                s.shipping_date, s.delivery_estimate, s.delivery_status,
+                c.name as customer_name, c.address as customer_address, c.phone as customer_phone,
+                co.name as courier_name, co.phone as courier_phone, co.region as courier_region
+         FROM SHIPMENTS s
+         LEFT JOIN CUSTOMERS c ON s.customer_id = c.customer_id
+         LEFT JOIN COURIERS co ON s.courier_id = co.courier_id
+         WHERE s.tracking_number = :1 AND s.owner_user_id IS NULL`,
+        [trackingNumber]
+      );
+    }
     
     if (result.rows.length === 0) {
       return null;
@@ -49,7 +83,7 @@ exports.getShipmentByTracking = async (trackingNumber) => {
     const historyResult = await connection.execute(
       `SELECT log_id, old_status, new_status, updated_at, updated_by
        FROM STATUS_LOG
-       WHERE shipment_id = :id
+       WHERE shipment_id = :1
        ORDER BY updated_at DESC`,
       [result.rows[0].SHIPMENT_ID]
     );
@@ -63,7 +97,7 @@ exports.getShipmentByTracking = async (trackingNumber) => {
   }
 };
 
-exports.createShipment = async ({ customer_id, origin, destination, distance_km, service_type }) => {
+exports.createShipment = async ({ customer_id, origin, destination, distance_km, service_type, owner_user_id = null }) => {
   const pool = database.getPool();
   const connection = await pool.getConnection();
   
@@ -74,21 +108,22 @@ exports.createShipment = async ({ customer_id, origin, destination, distance_km,
     const result = await connection.execute(
       `INSERT INTO SHIPMENTS 
        (shipment_id, tracking_number, customer_id, origin, destination, 
-        distance_km, service_type, shipping_date, delivery_estimate, delivery_status)
+        distance_km, service_type, shipping_date, delivery_estimate, delivery_status, owner_user_id)
        VALUES 
-       (shipments_seq.NEXTVAL, :tracking, :customer_id, :origin, :destination,
-        :distance_km, :service_type, SYSDATE, 
-        SYSDATE + fn_estimasi_tiba(:distance_km, :service_type), 'Diproses')
-       RETURNING shipment_id INTO :id`,
-      {
-        tracking: trackingNumber,
+       (shipments_seq.NEXTVAL, :1, :2, :3, :4,
+        :5, :6, SYSDATE, 
+        SYSDATE + fn_estimasi_tiba(:5, :6), 'Diproses', :7)
+       RETURNING shipment_id INTO :8`,
+      [
+        trackingNumber,
         customer_id,
         origin,
         destination,
         distance_km,
         service_type,
-        id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
-      },
+        owner_user_id,
+        { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
+      ],
       { autoCommit: true }
     );
     
@@ -107,7 +142,7 @@ exports.createShipment = async ({ customer_id, origin, destination, distance_km,
   }
 };
 
-exports.assignCourier = async (shipmentId, courierId) => {
+exports.assignCourier = async (shipmentId, courierId, userId) => {
   const pool = database.getPool();
   const connection = await pool.getConnection();
   
@@ -115,9 +150,9 @@ exports.assignCourier = async (shipmentId, courierId) => {
     // Update akan trigger otomatis untuk ubah status dan log
     const result = await connection.execute(
       `UPDATE SHIPMENTS 
-       SET courier_id = :courier_id
-       WHERE shipment_id = :id`,
-      { id: shipmentId, courier_id: courierId },
+       SET courier_id = :1
+       WHERE shipment_id = :2 AND owner_user_id = :3`,
+      [courierId, shipmentId, userId],
       { autoCommit: true }
     );
     
@@ -129,7 +164,7 @@ exports.assignCourier = async (shipmentId, courierId) => {
     const updatedResult = await connection.execute(
       `SELECT shipment_id, tracking_number, customer_id, courier_id, delivery_status
        FROM SHIPMENTS
-       WHERE shipment_id = :id`,
+       WHERE shipment_id = :1`,
       [shipmentId]
     );
     
@@ -139,24 +174,43 @@ exports.assignCourier = async (shipmentId, courierId) => {
   }
 };
 
-exports.getDashboardStatus = async () => {
+exports.getDashboardStatus = async (userId) => {
   const pool = database.getPool();
   const connection = await pool.getConnection();
   
   try {
     // Query recent shipments directly from tables (avoid materialized view)
-    const result = await connection.execute(
-      `SELECT s.tracking_number,
-              c.name AS customer_name,
-              co.name AS courier_name,
-              s.delivery_status,
-              s.updated_at AS last_update
-       FROM SHIPMENTS s
-       LEFT JOIN CUSTOMERS c ON s.customer_id = c.customer_id
-       LEFT JOIN COURIERS co ON s.courier_id = co.courier_id
-       ORDER BY s.updated_at DESC NULLS LAST
-       FETCH FIRST 5 ROWS ONLY`
-    );
+    let result;
+    if (userId) {
+      result = await connection.execute(
+        `SELECT s.tracking_number,
+                c.name AS customer_name,
+                co.name AS courier_name,
+                s.delivery_status,
+                s.updated_at AS last_update
+         FROM SHIPMENTS s
+         LEFT JOIN CUSTOMERS c ON s.customer_id = c.customer_id
+         LEFT JOIN COURIERS co ON s.courier_id = co.courier_id
+         WHERE s.owner_user_id = :1
+         ORDER BY s.updated_at DESC NULLS LAST
+         FETCH FIRST 5 ROWS ONLY`,
+        [userId]
+      );
+    } else {
+      result = await connection.execute(
+        `SELECT s.tracking_number,
+                c.name AS customer_name,
+                co.name AS courier_name,
+                s.delivery_status,
+                s.updated_at AS last_update
+         FROM SHIPMENTS s
+         LEFT JOIN CUSTOMERS c ON s.customer_id = c.customer_id
+         LEFT JOIN COURIERS co ON s.courier_id = co.courier_id
+         WHERE s.owner_user_id IS NULL
+         ORDER BY s.updated_at DESC NULLS LAST
+         FETCH FIRST 5 ROWS ONLY`
+      );
+    }
 
     // Normalize rows: oracledb returns array of rows; keep as-is for controller to map
     return result.rows;
@@ -165,16 +219,24 @@ exports.getDashboardStatus = async () => {
   }
 };
 
-exports.getDashboardMetrics = async () => {
+exports.getDashboardMetrics = async (userId) => {
   const pool = database.getPool();
   const connection = await pool.getConnection();
 
   try {
     // Run multiple lightweight queries to gather metrics
-    const totalRes = await connection.execute(`SELECT COUNT(*) AS TOTAL_SHIPMENTS FROM SHIPMENTS`);
-    const couriersRes = await connection.execute(`SELECT COUNT(DISTINCT courier_id) AS ACTIVE_COURIERS FROM SHIPMENTS WHERE courier_id IS NOT NULL`);
-    const customersRes = await connection.execute(`SELECT COUNT(*) AS TOTAL_CUSTOMERS FROM CUSTOMERS`);
-    const regionsRes = await connection.execute(`SELECT COUNT(DISTINCT region) AS TOTAL_REGIONS FROM COURIERS`);
+    let totalRes, couriersRes, customersRes, regionsRes;
+    if (userId) {
+      totalRes = await connection.execute(`SELECT COUNT(*) AS TOTAL_SHIPMENTS FROM SHIPMENTS WHERE owner_user_id = :1`, [userId]);
+      couriersRes = await connection.execute(`SELECT COUNT(DISTINCT courier_id) AS ACTIVE_COURIERS FROM SHIPMENTS WHERE owner_user_id = :1 AND courier_id IS NOT NULL`, [userId]);
+      customersRes = await connection.execute(`SELECT COUNT(*) AS TOTAL_CUSTOMERS FROM CUSTOMERS WHERE owner_user_id = :1`, [userId]);
+      regionsRes = await connection.execute(`SELECT COUNT(DISTINCT region) AS TOTAL_REGIONS FROM COURIERS WHERE owner_user_id = :1`, [userId]);
+    } else {
+      totalRes = await connection.execute(`SELECT COUNT(*) AS TOTAL_SHIPMENTS FROM SHIPMENTS WHERE owner_user_id IS NULL`);
+      couriersRes = await connection.execute(`SELECT COUNT(DISTINCT courier_id) AS ACTIVE_COURIERS FROM SHIPMENTS WHERE owner_user_id IS NULL AND courier_id IS NOT NULL`);
+      customersRes = await connection.execute(`SELECT COUNT(*) AS TOTAL_CUSTOMERS FROM CUSTOMERS WHERE owner_user_id IS NULL`);
+      regionsRes = await connection.execute(`SELECT COUNT(DISTINCT region) AS TOTAL_REGIONS FROM COURIERS WHERE owner_user_id IS NULL`);
+    }
 
     const getFirstNumber = (row) => {
       if (!row) return 0;

@@ -1,53 +1,78 @@
 const database = require("../config/database");
 const oracledb = require("oracledb");
 
-exports.getAllCouriers = async () => {
+exports.getAllCouriers = async (userId) => {
   const pool = database.getPool();
   const connection = await pool.getConnection();
-  
+
   try {
-    const result = await connection.execute(
-      `SELECT courier_id, name, phone, region 
-       FROM COURIERS 
-       ORDER BY courier_id`
-    );
+    let result;
+    if (userId) {
+      result = await connection.execute(
+        `SELECT courier_id, name, phone, region, owner_user_id
+         FROM COURIERS
+         WHERE owner_user_id = :1
+         ORDER BY courier_id`,
+        [userId]
+      );
+    } else {
+      // return only shared couriers (no owner)
+      result = await connection.execute(
+        `SELECT courier_id, name, phone, region, owner_user_id
+         FROM COURIERS
+         WHERE owner_user_id IS NULL
+         ORDER BY courier_id`
+      );
+    }
+
     return result.rows;
   } finally {
     await connection.close();
   }
 };
 
-exports.getCourierById = async (courierId) => {
+exports.getCourierById = async (courierId, userId) => {
   const pool = database.getPool();
   const connection = await pool.getConnection();
   
   try {
-    const result = await connection.execute(
-      `SELECT courier_id, name, phone, region 
-       FROM COURIERS 
-       WHERE courier_id = :id`,
-      [courierId]
-    );
-    
+    let result;
+    if (userId) {
+      result = await connection.execute(
+        `SELECT courier_id, name, phone, region, owner_user_id
+         FROM COURIERS
+         WHERE courier_id = :1 AND owner_user_id = :2`,
+        [courierId, userId]
+      );
+    } else {
+      result = await connection.execute(
+        `SELECT courier_id, name, phone, region, owner_user_id
+         FROM COURIERS
+         WHERE courier_id = :1 AND owner_user_id IS NULL`,
+        [courierId]
+      );
+    }
+
     return result.rows[0] || null;
   } finally {
     await connection.close();
   }
 };
 
-exports.createCourier = async ({ name, phone, region }) => {
+exports.createCourier = async ({ name, phone, region, owner_user_id = null }) => {
   const pool = database.getPool();
   const connection = await pool.getConnection();
   
   try {
     const result = await connection.execute(
-      `INSERT INTO COURIERS (courier_id, name, phone, region) 
-       VALUES (couriers_seq.NEXTVAL, :name, :phone, :region)
+      `INSERT INTO COURIERS (courier_id, name, phone, region, owner_user_id) 
+       VALUES (couriers_seq.NEXTVAL, :name, :phone, :region, :owner)
        RETURNING courier_id INTO :id`,
       {
         name,
         phone,
         region,
+        owner: owner_user_id,
         id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
       },
       { autoCommit: true }
@@ -64,16 +89,16 @@ exports.createCourier = async ({ name, phone, region }) => {
   }
 };
 
-exports.updateCourier = async (courierId, { name, phone, region }) => {
+exports.updateCourier = async (courierId, { name, phone, region }, userId) => {
   const pool = database.getPool();
   const connection = await pool.getConnection();
   
   try {
     const result = await connection.execute(
-      `UPDATE COURIERS 
-       SET name = :name, phone = :phone, region = :region
-       WHERE courier_id = :id`,
-      { id: courierId, name, phone, region },
+      `UPDATE COURIERS
+       SET name = :1, phone = :2, region = :3
+       WHERE courier_id = :4 AND owner_user_id = :5`,
+      [name, phone, region, courierId, userId],
       { autoCommit: true }
     );
     
@@ -87,14 +112,14 @@ exports.updateCourier = async (courierId, { name, phone, region }) => {
   }
 };
 
-exports.deleteCourier = async (courierId) => {
+exports.deleteCourier = async (courierId, userId) => {
   const pool = database.getPool();
   const connection = await pool.getConnection();
   
   try {
     const result = await connection.execute(
-      `DELETE FROM COURIERS WHERE courier_id = :id`,
-      [courierId],
+      `DELETE FROM COURIERS WHERE courier_id = :1 AND owner_user_id = :2`,
+      [courierId, userId],
       { autoCommit: true }
     );
     

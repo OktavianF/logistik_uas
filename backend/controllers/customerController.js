@@ -2,7 +2,8 @@ const customerService = require("../services/customerService");
 
 exports.getAllCustomers = async (req, res) => {
   try {
-    const customers = await customerService.getAllCustomers();
+    const userId = req.user ? (req.user.user_id || req.user.userId || req.user.userId) : null;
+    const customers = await customerService.getAllCustomers(userId);
     res.json({
       success: true,
       data: customers
@@ -19,7 +20,8 @@ exports.getAllCustomers = async (req, res) => {
 exports.getCustomerById = async (req, res) => {
   try {
     const { id } = req.params;
-    const customer = await customerService.getCustomerById(id);
+    const userId = req.user ? (req.user.user_id || req.user.userId) : null;
+    const customer = await customerService.getCustomerById(id, userId);
     
     if (!customer) {
       return res.status(404).json({
@@ -52,8 +54,8 @@ exports.createCustomer = async (req, res) => {
         error: "All fields (name, address, phone) are required"
       });
     }
-
-    const result = await customerService.createCustomer({ name, address, phone });
+    const ownerUserId = req.user ? (req.user.user_id || req.user.userId) : null;
+    const result = await customerService.createCustomer({ name, address, phone, owner_user_id: ownerUserId });
     res.status(201).json({
       success: true,
       data: result,
@@ -79,8 +81,8 @@ exports.updateCustomer = async (req, res) => {
         error: "All fields (name, address, phone) are required"
       });
     }
-
-    const result = await customerService.updateCustomer(id, { name, address, phone });
+    const ownerUserId = req.user ? (req.user.user_id || req.user.userId) : null;
+    const result = await customerService.updateCustomer(id, { name, address, phone }, ownerUserId);
     res.json({
       success: true,
       data: result,
@@ -98,7 +100,8 @@ exports.updateCustomer = async (req, res) => {
 exports.deleteCustomer = async (req, res) => {
   try {
     const { id } = req.params;
-    await customerService.deleteCustomer(id);
+    const ownerUserId = req.user ? (req.user.user_id || req.user.userId) : null;
+    await customerService.deleteCustomer(id, ownerUserId);
     res.json({
       success: true,
       message: "Customer deleted successfully"
