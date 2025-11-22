@@ -1,40 +1,85 @@
 import { useState } from "react";
-import { Search, Package, MapPin, Clock, CheckCircle2, Truck } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search, Package, MapPin, Clock, CheckCircle2, Truck, Map } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+import TrackingMap from "@/components/TrackingMap";
 
 const Tracking = () => {
   const [trackingNumber, setTrackingNumber] = useState("");
   const [shipmentData, setShipmentData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleTrack = async () => {
-    if (!trackingNumber.trim()) return;
+    if (!trackingNumber.trim()) {
+      toast.error("Masukkan nomor resi terlebih dahulu");
+      return;
+    }
     
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setShipmentData({
-        tracking_number: trackingNumber,
-        customer_name: "John Doe",
-        origin: "Jakarta",
-        destination: "Surabaya",
-        status: "Dikirim",
-        courier_name: "Ahmad Kurnia",
-        shipping_date: "2024-01-15",
-        delivery_estimate: "2024-01-17",
-        distance_km: 750,
-        service_type: "Express",
-        timeline: [
-          { status: "Diproses", date: "2024-01-15 08:00", location: "Jakarta" },
-          { status: "Dikirim", date: "2024-01-15 14:00", location: "Jakarta" },
-          { status: "Transit", date: "2024-01-16 09:00", location: "Semarang" }
-        ]
+    setShipmentData(null);
+
+    try {
+      // Call backend API (include auth token if present)
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`http://localhost:3000/api/shipments/track/${trackingNumber}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
+      const result = await response.json();
+
+      if (response.status === 401) {
+        toast.error("Anda harus masuk untuk melacak paket");
+        navigate('/auth');
+        setLoading(false);
+        return;
+      }
+
+      if (!response.ok || !result.success) {
+        toast.error(result.error || "Gagal melacak paket");
+        setLoading(false);
+        return;
+      }
+
+      const data = result.data;
+
+      // Transform data for UI
+      setShipmentData({
+        tracking_number: data.tracking_number,
+        customer_name: data.customer_name,
+        origin: data.origin.name,
+        destination: data.destination.name,
+        status: data.current.status,
+        courier_name: data.courier_name,
+        shipping_date: data.shipping_date,
+        delivery_estimate: data.delivery_estimate,
+        distance_km: data.distance_km,
+        service_type: data.service_type,
+        timeline: data.route.map((r: any) => ({
+          status: r.status,
+          date: new Date(r.timestamp).toLocaleString('id-ID'),
+          location: r.location || data.origin.name
+        })),
+        // Map data
+        mapData: {
+          origin: data.origin,
+          destination: data.destination,
+          current: data.current,
+          route: data.route
+        }
+      });
+
+      toast.success("Data tracking berhasil dimuat");
+    } catch (error) {
+      console.error("Error tracking shipment:", error);
+      toast.error("Terjadi kesalahan saat melacak paket");
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -88,6 +133,17 @@ const Tracking = () => {
           </CardContent>
         </Card>
 
+
+        {loading && (
+          <Card className="shadow-elegant border-none">
+            <CardContent className="pt-6 space-y-4">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-[400px] w-full" />
+            </CardContent>
+          </Card>
+        )}
+
         {shipmentData && (
           <div className="space-y-6 animate-fade-in">
             <Card className="shadow-elegant hover-lift border-none">
@@ -139,6 +195,27 @@ const Tracking = () => {
                     </div>
                   </div>
                 </div>
+                </CardContent>
+            </Card>
+
+            {/* Interactive Map */}
+            <Card className="shadow-elegant hover-lift border-none">
+              <CardHeader className="bg-gradient-to-r from-primary/5 to-accent/5">
+                <CardTitle className="flex items-center gap-2">
+                  <Map className="h-5 w-5 text-primary" />
+                  Peta Pelacakan Real-time
+                </CardTitle>
+                <CardDescription>Visualisasi rute dan posisi paket saat ini</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {shipmentData.mapData && (
+                  <TrackingMap
+                    origin={shipmentData.mapData.origin}
+                    destination={shipmentData.mapData.destination}
+                    current={shipmentData.mapData.current}
+                    route={shipmentData.mapData.route}
+                  />
+                )}
               </CardContent>
             </Card>
 
