@@ -30,6 +30,7 @@ const shipmentRoutes = require("./routes/shipmentRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const debugRoutes = require("./routes/debugRoutes");
 const authRoutes = require("./routes/authRoutes");
+const trackingRoutes = require("./routes/trackingRoutes");
 
 // Use routes
 app.use("/api/customers", customerRoutes);
@@ -38,6 +39,7 @@ app.use("/api/shipments", shipmentRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/debug", debugRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/shipments/track", trackingRoutes);
 
 // 404 handler
 app.use((req, res) => {
