@@ -85,8 +85,7 @@ const Tracking = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Diproses": return "bg-yellow-500";
-      case "Dikirim": return "bg-blue-500";
-      case "Transit": return "bg-purple-500";
+      case "Dalam Pengiriman": return "bg-purple-500";
       case "Terkirim": return "bg-green-500";
       default: return "bg-muted";
     }

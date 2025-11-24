@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Package, Loader2 } from "lucide-react";
 import { z } from "zod";
+import { useAuth } from '@/contexts/AuthContext';
 
 const authSchema = z.object({
   email: z.string().email("Email tidak valid").max(255),
@@ -22,6 +23,11 @@ const Auth = () => {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupFullName, setSignupFullName] = useState("");
+  const [signupPhone, setSignupPhone] = useState("");
+  const [signupAddress, setSignupAddress] = useState("");
+  const [signupLat, setSignupLat] = useState<string | number>("");
+  const [signupLng, setSignupLng] = useState<string | number>("");
+  const { setUser } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -48,12 +54,23 @@ const Auth = () => {
       }
 
       // store token then navigate
-      if (body.data?.token) {
-        try { localStorage.setItem('auth_token', body.data.token); } catch (e) { /* ignore storage errors */ }
+      const token = body.token || body.data?.token;
+      if (token) {
+        try { localStorage.setItem('auth_token', token); } catch (e) { /* ignore storage errors */ }
+      }
+
+      // update auth context if user payload returned
+      let dest = '/';
+      if (body.user) {
+        setUser(body.user);
+        const role = (body.user.role || '').toString().toLowerCase();
+        if (role === 'customer') dest = '/customer';
+        else if (role === 'admin') dest = '/dashboard';
+        else if (role === 'courier') dest = '/courier';
       }
 
       toast({ title: 'Login Berhasil', description: 'Selamat datang kembali!' });
-      navigate('/dashboard');
+      navigate(dest);
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast({ title: 'Validasi Gagal', description: error.errors[0].message, variant: 'destructive' });
@@ -79,7 +96,16 @@ const Auth = () => {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: validated.email, password: validated.password, fullName: validated.fullName })
+        body: JSON.stringify({
+          email: validated.email,
+          password: validated.password,
+          full_name: validated.fullName,
+          customer_name: validated.fullName,
+          address: signupAddress || null,
+          phone: signupPhone || null,
+          lat: signupLat || undefined,
+          lng: signupLng || undefined
+        })
       });
 
       const body = await res.json();
@@ -90,13 +116,21 @@ const Auth = () => {
       }
 
       // store token if returned
-      if (body.data?.token) {
-        try { localStorage.setItem('auth_token', body.data.token); } catch (e) { }
+      const token = body.token || body.data?.token;
+      if (token) {
+        try { localStorage.setItem('auth_token', token); } catch (e) { }
       }
 
-      toast({ title: 'Pendaftaran Berhasil', description: 'Akun Anda berhasil dibuat.' });
-      // navigate to dashboard after signup
-      navigate('/dashboard');
+      if (body.user) {
+        setUser(body.user);
+        const role = (body.user.role || '').toString().toLowerCase();
+        const dest = role === 'customer' ? '/customer' : role === 'admin' ? '/dashboard' : role === 'courier' ? '/courier' : '/';
+        toast({ title: 'Pendaftaran Berhasil', description: 'Akun Anda berhasil dibuat.' });
+        navigate(dest);
+      } else {
+        toast({ title: 'Pendaftaran Berhasil', description: 'Akun Anda berhasil dibuat.' });
+        navigate('/');
+      }
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast({ title: 'Validasi Gagal', description: error.errors[0].message, variant: 'destructive' });
@@ -193,6 +227,58 @@ const Auth = () => {
                       disabled={isLoading}
                       className="border-2 focus:border-primary"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-phone">Telepon</Label>
+                    <Input
+                      id="signup-phone"
+                      type="text"
+                      placeholder="0812xxxx"
+                      value={signupPhone}
+                      onChange={(e) => setSignupPhone(e.target.value)}
+                      disabled={isLoading}
+                      className="border-2 focus:border-primary"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-address">Alamat</Label>
+                    <Input
+                      id="signup-address"
+                      type="text"
+                      placeholder="Jalan contoh No.1"
+                      value={signupAddress}
+                      onChange={(e) => setSignupAddress(e.target.value)}
+                      disabled={isLoading}
+                      className="border-2 focus:border-primary"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-lat">Latitude</Label>
+                      <Input
+                        id="signup-lat"
+                        type="number"
+                        step="0.000001"
+                        placeholder="-7.0"
+                        value={signupLat as any}
+                        onChange={(e) => setSignupLat(e.target.value)}
+                        disabled={isLoading}
+                        className="border-2 focus:border-primary"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-lng">Longitude</Label>
+                      <Input
+                        id="signup-lng"
+                        type="number"
+                        step="0.000001"
+                        placeholder="112.0"
+                        value={signupLng as any}
+                        onChange={(e) => setSignupLng(e.target.value)}
+                        disabled={isLoading}
+                        className="border-2 focus:border-primary"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-email">Email</Label>

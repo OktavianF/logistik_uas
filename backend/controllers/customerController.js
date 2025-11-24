@@ -2,8 +2,10 @@ const customerService = require("../services/customerService");
 
 exports.getAllCustomers = async (req, res) => {
   try {
-    const userId = req.user ? (req.user.user_id || req.user.userId || req.user.userId) : null;
-    const customers = await customerService.getAllCustomers(userId);
+    const user = req.user || {};
+    const userId = user.user_id || user.customer_id || null;
+    const role = user.role || null;
+    const customers = await customerService.getAllCustomers(userId, role);
     res.json({
       success: true,
       data: customers
@@ -20,8 +22,10 @@ exports.getAllCustomers = async (req, res) => {
 exports.getCustomerById = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user ? (req.user.user_id || req.user.userId) : null;
-    const customer = await customerService.getCustomerById(id, userId);
+    const user = req.user || {};
+    const userId = user.user_id || user.customer_id || null;
+    const role = user.role || null;
+    const customer = await customerService.getCustomerById(id, userId, role);
     
     if (!customer) {
       return res.status(404).json({
@@ -54,8 +58,9 @@ exports.createCustomer = async (req, res) => {
         error: "All fields (name, address, phone) are required"
       });
     }
-    const ownerUserId = req.user ? (req.user.user_id || req.user.userId) : null;
-    const result = await customerService.createCustomer({ name, address, phone, owner_user_id: ownerUserId });
+    const user = req.user || {};
+    const role = user.role || null;
+    const result = await customerService.createCustomer({ name, address, phone });
     res.status(201).json({
       success: true,
       data: result,
@@ -81,8 +86,10 @@ exports.updateCustomer = async (req, res) => {
         error: "All fields (name, address, phone) are required"
       });
     }
-    const ownerUserId = req.user ? (req.user.user_id || req.user.userId) : null;
-    const result = await customerService.updateCustomer(id, { name, address, phone }, ownerUserId);
+    const user = req.user || {};
+    const userId = user.user_id || user.customer_id || null;
+    const role = user.role || null;
+    const result = await customerService.updateCustomer(id, { name, address, phone }, userId, role);
     res.json({
       success: true,
       data: result,
@@ -100,8 +107,10 @@ exports.updateCustomer = async (req, res) => {
 exports.deleteCustomer = async (req, res) => {
   try {
     const { id } = req.params;
-    const ownerUserId = req.user ? (req.user.user_id || req.user.userId) : null;
-    await customerService.deleteCustomer(id, ownerUserId);
+    const user = req.user || {};
+    const userId = user.user_id || user.customer_id || null;
+    const role = user.role || null;
+    await customerService.deleteCustomer(id, userId, role);
     res.json({
       success: true,
       message: "Customer deleted successfully"

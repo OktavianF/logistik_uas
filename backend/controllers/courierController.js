@@ -2,8 +2,7 @@ const courierService = require("../services/courierService");
 
 exports.getAllCouriers = async (req, res) => {
   try {
-    const userId = req.user && req.user.user_id;
-    const couriers = await courierService.getAllCouriers(userId);
+    const couriers = await courierService.getAllCouriers();
     res.json({
       success: true,
       data: couriers
@@ -20,8 +19,7 @@ exports.getAllCouriers = async (req, res) => {
 exports.getCourierById = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user && req.user.user_id;
-    const courier = await courierService.getCourierById(id, userId);
+    const courier = await courierService.getCourierById(id);
     
     if (!courier) {
       return res.status(404).json({
@@ -45,9 +43,9 @@ exports.getCourierById = async (req, res) => {
 
 exports.createCourier = async (req, res) => {
   try {
-    const { name, phone, region } = req.body;
-    const owner_user_id = req.user && req.user.user_id;
-    
+    const { name, phone, region, password, email, username } = req.body;
+    // creation is admin-only (route guarded).
+
     if (!name || !phone || !region) {
       return res.status(400).json({
         success: false,
@@ -55,7 +53,14 @@ exports.createCourier = async (req, res) => {
       });
     }
 
-    const result = await courierService.createCourier({ name, phone, region, owner_user_id });
+    // If password provided, hash it; otherwise create courier without login credentials
+    const bcrypt = require('bcrypt');
+    let password_hash = null;
+    if (password) {
+      password_hash = await bcrypt.hash(password, 10);
+    }
+
+    const result = await courierService.createCourier({ name, phone, region, password_hash, email, username });
     res.status(201).json({
       success: true,
       data: result,
@@ -74,7 +79,7 @@ exports.updateCourier = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, phone, region } = req.body;
-    const userId = req.user && req.user.user_id;
+    // admin-only route; no owner scoping
 
     if (!name || !phone || !region) {
       return res.status(400).json({
@@ -83,7 +88,7 @@ exports.updateCourier = async (req, res) => {
       });
     }
 
-    const result = await courierService.updateCourier(id, { name, phone, region }, userId);
+    const result = await courierService.updateCourier(id, { name, phone, region });
     res.json({
       success: true,
       data: result,
@@ -101,8 +106,7 @@ exports.updateCourier = async (req, res) => {
 exports.deleteCourier = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user && req.user.user_id;
-    await courierService.deleteCourier(id, userId);
+    await courierService.deleteCourier(id);
     res.json({
       success: true,
       message: "Courier deleted successfully"

@@ -1,24 +1,31 @@
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Props {
   children: JSX.Element;
+  allowedRoles?: string[]; // optional list of roles allowed to access
 }
 
-const ProtectedRoute: React.FC<Props> = ({ children }) => {
-  // Simple client-side guard: check for token in localStorage
-  let token: string | null = null;
-  try {
-    token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
-  } catch (e) {
-    token = null;
-  }
-
+const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
+  const { user, loading } = useAuth();
   const location = useLocation();
 
-  if (!token) {
-    // Redirect to auth page, preserve attempted location
+  // While we are determining auth status, render nothing (or a loader)
+  if (loading) return null;
+
+  // If no authenticated user, redirect to /auth
+  if (!user) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  // If allowedRoles provided, ensure user's role is included
+  if (allowedRoles && allowedRoles.length > 0) {
+    const role = (user && (user as any).role) || null;
+    if (!role || !allowedRoles.map(r => r.toLowerCase()).includes(String(role).toLowerCase())) {
+      // Not authorized
+      return <Navigate to="/auth" state={{ from: location }} replace />;
+    }
   }
 
   return children;

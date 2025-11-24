@@ -28,6 +28,20 @@ const Shipments = () => {
   const { toast } = useToast();
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const [customers, setCustomers] = useState<Array<{ customer_id: number; name: string; address?: string; lat?: number; lng?: number }>>([]);
+  const [couriersList, setCouriersList] = useState<Array<{ courier_id: number; name: string }>>([]);
+
+  const [formValues, setFormValues] = useState({
+    customer_id: '',
+    courier_id: '',
+    // origin is fixed to Lamongan on submit; do not expose as input
+    destination: '',
+    dest_lat: '' as string | number,
+    dest_lng: '' as string | number,
+    distance_km: '',
+    service_type: ''
+  });
 
   const normalizeRow = (row: Record<string, any>) => {
     const obj: Record<string, any> = {};
@@ -36,6 +50,20 @@ const Shipments = () => {
     });
     return obj;
   };
+
+  // When a customer is selected, auto-fill destination and coordinates from customer record
+  useEffect(() => {
+    if (!formValues.customer_id || formValues.customer_id === '-1') return;
+    const cust = customers.find(c => String(c.customer_id) === String(formValues.customer_id));
+    if (cust) {
+      setFormValues(prev => ({
+        ...prev,
+        destination: cust.address ?? cust.name ?? '',
+        dest_lat: cust.lat ?? '',
+        dest_lng: cust.lng ?? ''
+      }));
+    }
+  }, [formValues.customer_id, customers]);
 
   useEffect(() => {
     const fetchShipments = async () => {
@@ -79,19 +107,118 @@ const Shipments = () => {
       }
     };
 
+    // also fetch lists used by the create form
+    const fetchCustomers = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const headers: Record<string, string> = { 'Cache-Control': 'no-cache' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const res = await fetch('/api/customers', { cache: 'no-store', headers });
+        const body = await res.json();
+        if (body && body.success && Array.isArray(body.data)) {
+          setCustomers(body.data.map((c: any) => ({
+            customer_id: c.CUSTOMER_ID ?? c.customer_id,
+            name: c.NAME ?? c.name ?? c.email,
+            address: c.ADDRESS ?? c.address,
+            lat: c.LAT ?? c.lat,
+            lng: c.LNG ?? c.lng
+          })));
+        }
+      } catch (err) {
+        console.warn('Failed to fetch customers for form', err);
+      }
+    };
+
+    const fetchCouriersList = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const headers: Record<string, string> = { 'Cache-Control': 'no-cache' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const res = await fetch('/api/couriers', { cache: 'no-store', headers });
+        const body = await res.json();
+        if (body && body.success && Array.isArray(body.data)) {
+          setCouriersList(body.data.map((c: any) => ({ courier_id: c.COURIER_ID ?? c.courier_id, name: c.NAME ?? c.name })));
+        }
+      } catch (err) {
+        console.warn('Failed to fetch couriers for form', err);
+      }
+    };
+
     fetchShipments();
+    fetchCustomers();
+    fetchCouriersList();
 
     // delayed re-fetch to reduce chance of stale view from intermediate caching
     const t = setTimeout(fetchShipments, 2000);
     return () => clearTimeout(t);
   }, []);
 
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('auth_token');
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      if (!formValues.customer_id || formValues.customer_id === '-1') {
+        toast({ title: 'Error', description: 'Pilih pelanggan terlebih dahulu', variant: 'destructive' });
+        return;
+      }
+
+      const courierIdNum = formValues.courier_id && formValues.courier_id !== '-1' ? Number(formValues.courier_id) : null;
+
+      const payload = {
+        customer_id: Number(formValues.customer_id),
+        courier_id: courierIdNum,
+        origin: 'Lamongan',
+        destination: formValues.destination,
+        distance_km: Number(formValues.distance_km) || 0,
+        service_type: formValues.service_type || 'Reguler'
+      };
+
+      const res = await fetch('/api/shipments', { method: 'POST', headers, body: JSON.stringify(payload) });
+      const body = await res.json();
+      if (body && body.success) {
+        toast({ title: 'Berhasil', description: 'Pengiriman dibuat' });
+        setIsDialogOpen(false);
+        // reset form
+        setFormValues({ customer_id: '', courier_id: '', destination: '', dest_lat: '', dest_lng: '', distance_km: '', service_type: '' });
+        // refresh list
+        const fetchRes = await fetch('/api/shipments', { cache: 'no-store', headers });
+        const fetchBody = await fetchRes.json();
+        if (fetchBody && fetchBody.success && Array.isArray(fetchBody.data)) {
+          setShipments(fetchBody.data.map((r: any) => {
+            const row = normalizeRow(r);
+            return {
+              shipment_id: row.shipment_id || row.shipmentid || row.id || 0,
+              tracking_number: row.tracking_number || row.tracking || "-",
+              customer_name: row.customer_name || "-",
+              courier_name: row.courier_name || "-",
+              origin: row.origin || "-",
+              destination: row.destination || "-",
+              distance_km: row.distance_km || 0,
+              service_type: row.service_type || "-",
+              shipping_date: row.shipping_date || row.shippingdate || "-",
+              delivery_estimate: row.delivery_estimate || row.deliveryestimate || 0,
+              delivery_status: row.delivery_status || row.delivery_status || "-"
+            } as Shipment;
+          }));
+        }
+      } else {
+        throw new Error(body.error || 'Create failed');
+      }
+    } catch (err: any) {
+      console.error('Create shipment failed', err);
+      toast({ title: 'Error', description: `Gagal membuat pengiriman: ${err.message || err}` });
+    }
+  };
+
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { className: string }> = {
-      "Dikirim": { className: "bg-info text-info-foreground" },
+      "Dalam Pengiriman": { className: "bg-info text-info-foreground" },
       "Diproses": { className: "bg-warning text-warning-foreground" },
       "Terkirim": { className: "bg-success text-success-foreground" }
     };
@@ -130,60 +257,61 @@ const Shipments = () => {
               <form className="grid gap-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
-                    <Label>Pelanggan</Label>
-                    <Select>
-                      <SelectTrigger>
+                    <Label htmlFor="customer">Pelanggan</Label>
+                    <Select
+                      value={formValues.customer_id}
+                      onValueChange={(v) => setFormValues({ ...formValues, customer_id: v })}
+                    >
+                      <SelectTrigger id="customer">
                         <SelectValue placeholder="Pilih pelanggan" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="1">PT. Maju Jaya</SelectItem>
-                        <SelectItem value="2">CV. Berkah Sentosa</SelectItem>
+                        {customers.length === 0 && <SelectItem value="-1" disabled>Tidak ada pelanggan</SelectItem>}
+                        {customers.map(c => (
+                          <SelectItem key={c.customer_id} value={String(c.customer_id)}>{c.name}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label>Kurir</Label>
-                    <Select>
-                      <SelectTrigger>
+                    <Label htmlFor="courier">Kurir</Label>
+                    <Select
+                      value={formValues.courier_id}
+                      onValueChange={(v) => setFormValues({ ...formValues, courier_id: v })}
+                    >
+                      <SelectTrigger id="courier">
                         <SelectValue placeholder="Pilih kurir" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="1">Ahmad Rizki</SelectItem>
-                        <SelectItem value="2">Budi Santoso</SelectItem>
+                        <SelectItem value="-1" disabled>(Pilih kosong jika belum ditentukan)</SelectItem>
+                        {couriersList.map(c => (
+                          <SelectItem key={c.courier_id} value={String(c.courier_id)}>{c.name}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>Asal</Label>
-                    <Input placeholder="Kota asal" />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Tujuan</Label>
-                    <Input placeholder="Kota tujuan" />
-                  </div>
-                </div>
+                {/* Origin is fixed to Lamongan and destination is auto-filled from selected customer; no inputs shown */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>Jarak (km)</Label>
-                    <Input type="number" placeholder="0" />
+                    <Input type="number" placeholder="0" value={formValues.distance_km} onChange={(e) => setFormValues({ ...formValues, distance_km: e.target.value })} />
                   </div>
                   <div className="grid gap-2">
                     <Label>Jenis Layanan</Label>
-                    <Select>
+                    <Select value={formValues.service_type} onValueChange={(v) => setFormValues({ ...formValues, service_type: v })}>
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih layanan" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="reguler">Reguler</SelectItem>
-                        <SelectItem value="express">Express</SelectItem>
+                        <SelectItem value="Reguler">Reguler</SelectItem>
+                        <SelectItem value="Express">Express</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit">Buat Pengiriman</Button>
+                  <Button type="submit" onClick={handleCreateSubmit}>Buat Pengiriman</Button>
                 </DialogFooter>
               </form>
             </DialogContent>

@@ -115,14 +115,9 @@ exports.getShipmentTracking = async (trackingNumber) => {
         case 'Diproses':
           progress = 0;
           break;
-        case 'Dikirim':
-          progress = 0.25;
-          break;
-        case 'Transit':
-          progress = 0.5;
-          break;
+        // Removed statuses 'Dikirim' and 'Transit' — treat intermediate progress as 'Dalam Pengiriman'
         case 'Dalam Pengiriman':
-          progress = 0.75;
+          progress = 0.5;
           break;
         case 'Terkirim':
           progress = 1;

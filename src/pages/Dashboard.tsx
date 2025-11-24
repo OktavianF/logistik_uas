@@ -112,7 +112,7 @@ const Dashboard = () => {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline", className: string }> = {
-      "Dikirim": { variant: "default", className: "bg-info text-info-foreground" },
+      "Dalam Pengiriman": { variant: "default", className: "bg-info text-info-foreground" },
       "Diproses": { variant: "secondary", className: "bg-warning text-warning-foreground" },
       "Terkirim": { variant: "default", className: "bg-success text-success-foreground" }
     };
@@ -166,7 +166,7 @@ const Dashboard = () => {
               Pengiriman Terbaru
             </CardTitle>
             <CardDescription>
-              5 pengiriman terakhir yang diproses
+              List pengiriman terakhir yang diproses
             </CardDescription>
           </CardHeader>
           <CardContent>

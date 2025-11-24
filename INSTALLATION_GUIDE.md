@@ -524,7 +524,7 @@ curl http://localhost:3000/api/reports/per-courier
 1. **Create Customer** via frontend
 2. **Create Courier** via frontend
 3. **Create Shipment** without courier (status: "Diproses")
-4. **Assign Courier** → Trigger should auto-update status to "Dikirim"
+4. **Assign Courier** → Trigger should auto-update status to "Dalam Pengiriman"
 5. **Check STATUS_LOG** table for log entry
 6. **View Dashboard** to see updated statistics
 
