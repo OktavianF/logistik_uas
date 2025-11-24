@@ -22,11 +22,16 @@ const Couriers = () => {
   const [loading, setLoading] = useState<boolean>(false);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
-    region: ""
+    region: "",
+    username: "",
+    email: "",
+    password: ""
   });
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const normalizeCourierRow = (r: any): Courier => ({
     courier_id: r.COURIER_ID ?? r.courier_id,
@@ -133,6 +138,25 @@ const Couriers = () => {
               <form onSubmit={handleSubmit}>
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
+                    <Label htmlFor="username">Username</Label>
+                    <Input
+                      id="username"
+                      value={formData.username}
+                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
                     <Label htmlFor="name">Nama Kurir</Label>
                     <Input
                       id="name"
@@ -147,6 +171,16 @@ const Couriers = () => {
                       id="phone"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       required
                     />
                   </div>
@@ -195,7 +229,11 @@ const Couriers = () => {
                     <TableCell>{courier.phone}</TableCell>
                     <TableCell>{courier.region}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="mr-2">
+                      <Button variant="ghost" size="icon" className="mr-2" onClick={() => {
+                        setEditingId(courier.courier_id);
+                        setFormData({ name: courier.name, phone: courier.phone, region: courier.region, username: '', email: '', password: '' });
+                        setIsEditOpen(true);
+                      }}>
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
@@ -212,6 +250,59 @@ const Couriers = () => {
             </Table>
           </CardContent>
         </Card>
+        {/* Edit Courier Dialog */}
+        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Kurir</DialogTitle>
+              <DialogDescription>Ubah informasi kurir lalu simpan.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!editingId) return;
+              try {
+                const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+                const headers: Record<string,string> = { 'Content-Type': 'application/json' };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+                const res = await fetch(`/api/couriers/${editingId}`, {
+                  method: 'PUT',
+                  headers,
+                  body: JSON.stringify({ name: formData.name, phone: formData.phone, region: formData.region })
+                });
+                const body = await res.json();
+                if (body.success) {
+                  setCouriers(prev => prev.map(c => c.courier_id === editingId ? { ...c, name: formData.name, phone: formData.phone, region: formData.region } : c));
+                  setIsEditOpen(false);
+                  setEditingId(null);
+                  toast({ title: 'Berhasil', description: 'Perubahan disimpan' });
+                } else {
+                  throw new Error(body.error || 'Update failed');
+                }
+              } catch (err: any) {
+                console.error('Update courier failed', err);
+                toast({ title: 'Error', description: `Gagal menyimpan perubahan: ${err.message || err}` });
+              }
+            }}>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-name">Nama Kurir</Label>
+                  <Input id="edit-name" value={formData.name} onChange={(e)=>setFormData({...formData, name: e.target.value})} required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-phone">Nomor Telepon</Label>
+                  <Input id="edit-phone" value={formData.phone} onChange={(e)=>setFormData({...formData, phone: e.target.value})} required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-region">Wilayah</Label>
+                  <Input id="edit-region" value={formData.region} onChange={(e)=>setFormData({...formData, region: e.target.value})} required />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="submit">Simpan Perubahan</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

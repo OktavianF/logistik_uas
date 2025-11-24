@@ -22,11 +22,13 @@ const Customers = () => {
   const [loading, setLoading] = useState<boolean>(false);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     address: "",
     phone: ""
   });
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const normalizeCustomerRow = (r: any): Customer => ({
     customer_id: r.CUSTOMER_ID ?? r.customer_id,
@@ -208,7 +210,11 @@ const Customers = () => {
                     <TableCell>{customer.address}</TableCell>
                     <TableCell>{customer.phone}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="mr-2">
+                      <Button variant="ghost" size="icon" className="mr-2" onClick={() => {
+                        setEditingId(customer.customer_id);
+                        setFormData({ name: customer.name, address: customer.address, phone: customer.phone });
+                        setIsEditOpen(true);
+                      }}>
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
@@ -225,6 +231,59 @@ const Customers = () => {
             </Table>
           </CardContent>
         </Card>
+        {/* Edit Customer Dialog */}
+        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Pelanggan</DialogTitle>
+              <DialogDescription>Perbarui data pelanggan lalu simpan.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!editingId) return;
+              try {
+                const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+                const headers: Record<string,string> = { 'Content-Type': 'application/json' };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+                const res = await fetch(`/api/customers/${editingId}`, {
+                  method: 'PUT',
+                  headers,
+                  body: JSON.stringify({ name: formData.name, address: formData.address, phone: formData.phone })
+                });
+                const body = await res.json();
+                if (body.success) {
+                  setCustomers(prev => prev.map(c => c.customer_id === editingId ? { ...c, name: formData.name, address: formData.address, phone: formData.phone } : c));
+                  setIsEditOpen(false);
+                  setEditingId(null);
+                  toast({ title: 'Berhasil', description: 'Perubahan disimpan' });
+                } else {
+                  throw new Error(body.error || 'Update failed');
+                }
+              } catch (err: any) {
+                console.error('Update customer failed', err);
+                toast({ title: 'Error', description: `Gagal menyimpan perubahan: ${err.message || err}` });
+              }
+            }}>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-name">Nama Pelanggan</Label>
+                  <Input id="edit-name" value={formData.name} onChange={(e)=>setFormData({...formData, name: e.target.value})} required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-address">Alamat</Label>
+                  <Input id="edit-address" value={formData.address} onChange={(e)=>setFormData({...formData, address: e.target.value})} required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-phone">Nomor Telepon</Label>
+                  <Input id="edit-phone" value={formData.phone} onChange={(e)=>setFormData({...formData, phone: e.target.value})} required />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="submit">Simpan Perubahan</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

@@ -199,13 +199,13 @@ Get courier by ID
 Get all shipments
 
 **Query Parameters:**
-- `status` (optional): Filter by status (Diproses, Dikirim, Terkirim)
+- `status` (optional): Filter by status (Diproses, Dalam Pengiriman, Terkirim)
 - `customer_id` (optional): Filter by customer
 - `courier_id` (optional): Filter by courier
 - `limit` (optional): Limit results (default: 100)
 - `offset` (optional): Pagination offset (default: 0)
 
-**Example:** `/api/shipments?status=Dikirim&limit=10`
+**Example:** `/api/shipments?status=Dalam Pengiriman&limit=10`
 
 **Response 200 OK:**
 ```json
@@ -223,7 +223,7 @@ Get all shipments
       "SERVICE_TYPE": "Express",
       "SHIPPING_DATE": "2025-01-10T00:00:00.000Z",
       "DELIVERY_ESTIMATE": 1,
-      "DELIVERY_STATUS": "Dikirim",
+      "DELIVERY_STATUS": "Dalam Pengiriman",
       "CREATED_AT": "2025-01-10T10:30:00.000Z",
       "UPDATED_AT": "2025-01-10T11:15:00.000Z"
     }
@@ -297,14 +297,14 @@ Track shipment by tracking number
       "SERVICE_TYPE": "Express",
       "SHIPPING_DATE": "2025-01-10T00:00:00.000Z",
       "DELIVERY_ESTIMATE": 1,
-      "DELIVERY_STATUS": "Dikirim",
+      "DELIVERY_STATUS": "Dalam Pengiriman",
       "LAST_UPDATE": "2025-01-10T11:15:00.000Z"
     },
     "history": [
       {
         "LOG_ID": 1,
         "OLD_STATUS": "Diproses",
-        "NEW_STATUS": "Dikirim",
+        "NEW_STATUS": "Dalam Pengiriman",
         "UPDATED_AT": "2025-01-10T11:15:00.000Z",
         "UPDATED_BY": "LOGISTIK",
         "NOTES": "Status auto-updated by trigger: Courier assigned"
@@ -341,14 +341,14 @@ Assign courier to shipment (trigger auto-update status)
     "shipment_id": 4,
     "tracking_number": "TRK20250110000004",
     "old_status": "Diproses",
-    "new_status": "Dikirim",
+    "new_status": "Dalam Pengiriman",
     "courier_id": 1
   }
 }
 ```
 
 **Trigger Behavior:**
-- Automatically updates `delivery_status` from "Diproses" to "Dikirim"
+- Automatically updates `delivery_status` from "Diproses" to "Dalam Pengiriman"
 - Creates log entry in `STATUS_LOG` table
 - Records `updated_by` and `updated_at`
 
@@ -363,7 +363,7 @@ Manually update shipment status
 }
 ```
 
-**Valid statuses:** Diproses, Dikirim, Terkirim, Dibatalkan
+**Valid statuses:** Diproses, Dalam Pengiriman, Terkirim, Dibatalkan
 
 **Response 200 OK:**
 ```json
@@ -510,7 +510,7 @@ Get dashboard statistics (uses direct queries against SHIPMENTS, CUSTOMERS and C
     "total_couriers": 8,
     "status_breakdown": {
       "Diproses": 5,
-      "Dikirim": 12,
+      "Dalam Pengiriman": 12,
       "Terkirim": 28
     },
     "recent_shipments": [
@@ -518,7 +518,7 @@ Get dashboard statistics (uses direct queries against SHIPMENTS, CUSTOMERS and C
         "TRACKING_NUMBER": "TRK20250110000005",
         "CUSTOMER_NAME": "PT. Maju Jaya",
         "COURIER_NAME": "Ahmad Rizki",
-        "DELIVERY_STATUS": "Dikirim",
+        "DELIVERY_STATUS": "Dalam Pengiriman",
         "LAST_UPDATE": "2025-01-10T14:30:00.000Z"
       }
     ]
@@ -634,7 +634,7 @@ fetch('http://localhost:3000/api/shipments/4/assign-courier', {
 
 ## 📝 Notes
 
-1. **Trigger Behavior**: Assigning a courier automatically updates status from "Diproses" to "Dikirim" and logs the change.
+1. **Trigger Behavior**: Assigning a courier automatically updates status from "Diproses" to "Dalam Pengiriman" and logs the change.
 
 2. **Function Usage**: `fn_estimasi_tiba` is called automatically during shipment creation to calculate delivery estimate.
 

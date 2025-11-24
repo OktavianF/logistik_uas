@@ -1,4 +1,4 @@
-# 📦 Sistem Manajemen Logistik & Pengiriman Barang
+# 📦 Sistem Manajemen Logistik & Pengiriman Barang - UAS Basis Data Lanjut
 
 Sistem lengkap untuk mengelola logistik dan pengiriman barang dengan **Frontend React** dan **Backend Node.js + Oracle Database**.
 
@@ -63,23 +63,18 @@ sqlplus logistik/logistik123@192.168.1.7:1521/ORCLPDB1
 ```
 
 **Script akan membuat:**
-- ✅ 4 Tables: CUSTOMERS, COURIERS, SHIPMENTS, STATUS_LOG
-- ✅ 4 Sequences untuk auto-increment
-- ✅ 5 Indexes untuk optimasi query
-- ✅ 1 Function: fn_estimasi_tiba
+ 🟢 **Terkirim**: Success (hijau)
+ 🔵 **Dalam Pengiriman**: Info (biru)
+ 🟡 **Diproses**: Warning (kuning)
+ 🔴 **Dibatalkan**: Destructive (merah)
 - ✅ 2 Stored Procedures: sp_report_per_courier, sp_report_per_region
 - ✅ Materialized View: none (removed) — dashboard uses direct queries
 - ✅ 1 Trigger: trg_update_shipment_status
 - ✅ Sample data (5 customers, 5 couriers, 5 shipments)
 
 ### 2️⃣ Setup Backend
-
 ```bash
 # Buat folder backend
-mkdir backend
-cd backend
-
-# Install dependencies
 npm init -y
 npm install express oracledb dotenv cors body-parser
 npm install --save-dev nodemon
@@ -87,13 +82,10 @@ npm install --save-dev nodemon
 # Buat file .env
 cat > .env << EOL
 DB_USER=logistik
-DB_PASSWORD=logistik123
 DB_CONNECT_STRING=192.168.1.7:1521/ORCLPDB1
 PORT=3000
-NODE_ENV=development
 POOL_MIN=2
 POOL_MAX=10
-POOL_INCREMENT=1
 EOL
 
 # Copy semua file backend dari BACKEND_README.md
@@ -166,7 +158,7 @@ GET    /api/reports/performance    # Execution plan analysis
 
 ### Status Colors
 - 🟢 **Terkirim**: Success (hijau)
-- 🔵 **Dikirim**: Info (biru)
+- 🔵 **Dalam Pengiriman**: Info (biru)
 - 🟡 **Diproses**: Warning (kuning)
 - 🔴 **Dibatalkan**: Destructive (merah)
 
@@ -215,7 +207,7 @@ customer_id              courier_id
 UPDATE SHIPMENTS SET courier_id = 1 WHERE shipment_id = 5;
 
 -- Auto execution:
--- 1. Update delivery_status: 'Diproses' → 'Dikirim'
+-- 1. Update delivery_status: 'Diproses' → 'Dalam Pengiriman'
 -- 2. Insert log to STATUS_LOG with old_status and new_status
 -- 3. Record updated_by = current user
 ```
@@ -371,7 +363,7 @@ SELECT * FROM STATUS_LOG ORDER BY updated_at DESC;
 ### 3. Menugaskan Kurir
 1. Buka detail pengiriman
 2. Pilih kurir dari dropdown
-3. Saat assign courier, **trigger otomatis update status** dari "Diproses" → "Dikirim"
+3. Saat assign courier, **trigger otomatis update status** dari "Diproses" → "Dalam Pengiriman"
 4. Log perubahan tersimpan di STATUS_LOG
 
 ### 4. Tracking Pengiriman

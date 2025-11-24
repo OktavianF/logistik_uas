@@ -31,6 +31,8 @@ const reportRoutes = require("./routes/reportRoutes");
 const debugRoutes = require("./routes/debugRoutes");
 const authRoutes = require("./routes/authRoutes");
 const trackingRoutes = require("./routes/trackingRoutes");
+const shipmentRequestRoutes = require("./routes/shipmentRequestRoutes");
+const internalAdminRoutes = require("./routes/internalAdminRoutes");
 
 // Use routes
 app.use("/api/customers", customerRoutes);
@@ -40,6 +42,9 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/debug", debugRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/shipments/track", trackingRoutes);
+app.use("/api/shipment_requests", shipmentRequestRoutes);
+// Internal admin management (protected by x-internal-secret header)
+app.use("/internal", internalAdminRoutes);
 
 // 404 handler
 app.use((req, res) => {

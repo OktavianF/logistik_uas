@@ -95,7 +95,8 @@ CREATE TABLE SHIPMENTS (
   service_type VARCHAR2(20) CHECK (service_type IN ('Reguler', 'Express')),
   shipping_date DATE DEFAULT SYSDATE,
   delivery_estimate NUMBER,
-  delivery_status VARCHAR2(20) DEFAULT 'Diproses' CHECK (delivery_status IN ('Diproses', 'Dikirim', 'Terkirim', 'Dibatalkan')),
+  -- Removed statuses 'Dikirim' and 'Transit'; using 'Dalam Pengiriman' as intermediate state
+  delivery_status VARCHAR2(20) DEFAULT 'Diproses' CHECK (delivery_status IN ('Diproses', 'Dalam Pengiriman', 'Terkirim', 'Dibatalkan')),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_shipments_customer FOREIGN KEY (customer_id) REFERENCES CUSTOMERS(customer_id),
@@ -180,9 +181,9 @@ AFTER UPDATE OF courier_id ON SHIPMENTS
 FOR EACH ROW
 WHEN (OLD.courier_id IS NULL AND NEW.courier_id IS NOT NULL)
 BEGIN
-  -- Update status menjadi 'Dikirim'
+  -- Update status menjadi 'Dalam Pengiriman'
   UPDATE SHIPMENTS
-  SET delivery_status = 'Dikirim',
+  SET delivery_status = 'Dalam Pengiriman',
       updated_at = CURRENT_TIMESTAMP
   WHERE shipment_id = :NEW.shipment_id;
   
@@ -199,7 +200,7 @@ BEGIN
     status_log_seq.NEXTVAL,
     :NEW.shipment_id,
     :OLD.delivery_status,
-    'Dikirim',
+    'Dalam Pengiriman',
     CURRENT_TIMESTAMP,
     USER,
     'Status auto-updated by trigger: Courier assigned'
@@ -223,7 +224,7 @@ BEGIN
       c.region,
       COUNT(s.shipment_id) AS total_pengiriman,
       COUNT(CASE WHEN s.delivery_status = 'Terkirim' THEN 1 END) AS terkirim,
-      COUNT(CASE WHEN s.delivery_status = 'Dikirim' THEN 1 END) AS dalam_pengiriman,
+      COUNT(CASE WHEN s.delivery_status = 'Dalam Pengiriman' THEN 1 END) AS dalam_pengiriman,
       COUNT(CASE WHEN s.delivery_status = 'Diproses' THEN 1 END) AS diproses,
       ROUND(AVG(s.distance_km), 2) AS avg_distance_km
     FROM COURIERS c
@@ -244,7 +245,7 @@ BEGIN
       COUNT(DISTINCT c.courier_id) AS total_courier,
       COUNT(s.shipment_id) AS total_pengiriman,
       COUNT(CASE WHEN s.delivery_status = 'Terkirim' THEN 1 END) AS terkirim,
-      COUNT(CASE WHEN s.delivery_status = 'Dikirim' THEN 1 END) AS dalam_pengiriman,
+      COUNT(CASE WHEN s.delivery_status = 'Dalam Pengiriman' THEN 1 END) AS dalam_pengiriman,
       COUNT(CASE WHEN s.delivery_status = 'Diproses' THEN 1 END) AS diproses,
       ROUND(AVG(s.distance_km), 2) AS avg_distance_km,
       ROUND(AVG(s.delivery_estimate), 2) AS avg_delivery_days
@@ -306,8 +307,8 @@ INSERT INTO SHIPMENTS (
   'Jakarta Selatan',
   25,
   'Express',
-  fn_estimasi_tiba(25, 'Express'),
-  'Dikirim'
+   fn_estimasi_tiba(25, 'Express'),
+   'Dalam Pengiriman'
 );
 
 INSERT INTO SHIPMENTS (
@@ -323,7 +324,7 @@ INSERT INTO SHIPMENTS (
   150,
   'Reguler',
   fn_estimasi_tiba(150, 'Reguler'),
-  'Dikirim'
+   'Dalam Pengiriman'
 );
 
 INSERT INTO SHIPMENTS (
@@ -371,7 +372,7 @@ INSERT INTO SHIPMENTS (
   450,
   'Express',
   fn_estimasi_tiba(450, 'Express'),
-  'Dikirim'
+   'Dalam Pengiriman'
 );
 
 -- Commit data

@@ -106,10 +106,21 @@ const [user, setUser] = useState<any>(null);
                   <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
                     <User className="h-4 w-4 text-primary-foreground" />
                   </div>
-                  <div className="flex flex-col items-start">
-                    <span className="text-sm font-medium">{user?.user_metadata?.full_name || 'User'}</span>
-                    <span className="text-xs text-sidebar-foreground/60">{user?.email}</span>
-                  </div>
+                    <div className="flex flex-col items-start">
+                      {(() => {
+                        // Derive a localized role label from token payload
+                        const role = user?.role || user?.roles || user?.role_name || null;
+                        const roleLabel = role === 'admin' ? 'Admin' : role === 'courier' ? 'Kurir' : role === 'customer' ? 'Pelanggan' : 'User';
+                        const displayName = user?.user_metadata?.full_name || user?.name || roleLabel;
+                        const subtitle = user?.email || roleLabel;
+                        return (
+                          <>
+                            <span className="text-sm font-medium">{displayName}</span>
+                            <span className="text-xs text-sidebar-foreground/60">{subtitle}</span>
+                          </>
+                        );
+                      })()}
+                    </div>
                 </div>
               </Button>
             </DropdownMenuTrigger>

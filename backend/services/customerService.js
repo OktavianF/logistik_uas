@@ -1,27 +1,31 @@
 const database = require("../config/database");
 const oracledb = require("oracledb");
 
-exports.getAllCustomers = async (userId) => {
+exports.getAllCustomers = async (userId, role) => {
   const pool = database.getPool();
   const connection = await pool.getConnection();
 
   try {
+    // If caller is admin, return all customers
     let result;
-    if (userId) {
-      // use positional bind to avoid any named-bind parsing issues
+    if (role && role.toLowerCase() === 'admin') {
       result = await connection.execute(
-        `SELECT customer_id, name, address, phone, owner_user_id
+        `SELECT customer_id, name, address, phone
          FROM CUSTOMERS
-         WHERE owner_user_id = :1
-         ORDER BY customer_id`,
+         ORDER BY customer_id`
+      );
+    } else if (userId) {
+      // for a customer, return only their own record
+      result = await connection.execute(
+        `SELECT customer_id, name, address, phone
+         FROM CUSTOMERS
+         WHERE customer_id = :1`,
         [userId]
       );
     } else {
-      // If no userId provided, return only shared rows (owner_user_id IS NULL)
       result = await connection.execute(
-        `SELECT customer_id, name, address, phone, owner_user_id
+        `SELECT customer_id, name, address, phone
          FROM CUSTOMERS
-         WHERE owner_user_id IS NULL
          ORDER BY customer_id`
       );
     }
@@ -32,26 +36,24 @@ exports.getAllCustomers = async (userId) => {
   }
 };
 
-exports.getCustomerById = async (customerId, userId) => {
+exports.getCustomerById = async (customerId, userId, role) => {
   const pool = database.getPool();
   const connection = await pool.getConnection();
 
   try {
     let result;
-    if (userId) {
+    if (role && role.toLowerCase() === 'admin') {
       result = await connection.execute(
-        `SELECT customer_id, name, address, phone, owner_user_id
-         FROM CUSTOMERS
-         WHERE customer_id = :1 AND owner_user_id = :2`,
-        [customerId, userId]
-      );
-    } else {
-      result = await connection.execute(
-        `SELECT customer_id, name, address, phone, owner_user_id
-         FROM CUSTOMERS
-         WHERE customer_id = :1 AND owner_user_id IS NULL`,
+        `SELECT customer_id, name, address, phone FROM CUSTOMERS WHERE customer_id = :1`,
         [customerId]
       );
+    } else if (userId && Number(userId) === Number(customerId)) {
+      result = await connection.execute(
+        `SELECT customer_id, name, address, phone FROM CUSTOMERS WHERE customer_id = :1`,
+        [customerId]
+      );
+    } else {
+      return null;
     }
 
     return result.rows[0] || null;
@@ -60,20 +62,21 @@ exports.getCustomerById = async (customerId, userId) => {
   }
 };
 
-exports.createCustomer = async ({ name, address, phone, owner_user_id = null }) => {
+exports.createCustomer = async ({ name, address, phone, email = null, password_hash = null }) => {
   const pool = database.getPool();
   const connection = await pool.getConnection();
 
   try {
     const result = await connection.execute(
-      `INSERT INTO CUSTOMERS (customer_id, name, address, phone, owner_user_id)
-       VALUES (customers_seq.NEXTVAL, :name, :address, :phone, :owner)
+      `INSERT INTO CUSTOMERS (customer_id, name, address, phone, email, password_hash)
+       VALUES (customers_seq.NEXTVAL, :name, :address, :phone, :email, :password_hash)
        RETURNING customer_id INTO :id`,
       {
         name,
         address,
         phone,
-        owner: owner_user_id,
+        email,
+        password_hash,
         id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
       },
       { autoCommit: true }
@@ -83,26 +86,33 @@ exports.createCustomer = async ({ name, address, phone, owner_user_id = null }) 
       customer_id: result.outBinds.id[0],
       name,
       address,
-      phone,
-      owner_user_id
+      phone
     };
   } finally {
     await connection.close();
   }
 };
 
-exports.updateCustomer = async (customerId, { name, address, phone }, userId) => {
+exports.updateCustomer = async (customerId, { name, address, phone }, userId, role) => {
   const pool = database.getPool();
   const connection = await pool.getConnection();
 
   try {
-    const result = await connection.execute(
-      `UPDATE CUSTOMERS
-       SET name = :1, address = :2, phone = :3, updated_at = CURRENT_TIMESTAMP
-       WHERE customer_id = :4 AND owner_user_id = :5`,
-      [name, address, phone, customerId, userId],
-      { autoCommit: true }
-    );
+    // Allow admin to update any customer; customers can only update themselves
+    let result;
+    if (role && role.toLowerCase() === 'admin') {
+      result = await connection.execute(
+        `UPDATE CUSTOMERS SET name = :1, address = :2, phone = :3, updated_at = CURRENT_TIMESTAMP WHERE customer_id = :4`,
+        [name, address, phone, customerId],
+        { autoCommit: true }
+      );
+    } else {
+      result = await connection.execute(
+        `UPDATE CUSTOMERS SET name = :1, address = :2, phone = :3, updated_at = CURRENT_TIMESTAMP WHERE customer_id = :4 AND customer_id = :5`,
+        [name, address, phone, customerId, userId],
+        { autoCommit: true }
+      );
+    }
 
     if (result.rowsAffected === 0) {
       throw new Error("Customer not found or not authorized");
@@ -114,16 +124,17 @@ exports.updateCustomer = async (customerId, { name, address, phone }, userId) =>
   }
 };
 
-exports.deleteCustomer = async (customerId, userId) => {
+exports.deleteCustomer = async (customerId, userId, role) => {
   const pool = database.getPool();
   const connection = await pool.getConnection();
 
   try {
-    const result = await connection.execute(
-      `DELETE FROM CUSTOMERS WHERE customer_id = :1 AND owner_user_id = :2`,
-      [customerId, userId],
-      { autoCommit: true }
-    );
+    let result;
+    if (role && role.toLowerCase() === 'admin') {
+      result = await connection.execute(`DELETE FROM CUSTOMERS WHERE customer_id = :1`, [customerId], { autoCommit: true });
+    } else {
+      result = await connection.execute(`DELETE FROM CUSTOMERS WHERE customer_id = :1 AND customer_id = :2`, [customerId, userId], { autoCommit: true });
+    }
 
     if (result.rowsAffected === 0) {
       throw new Error("Customer not found or not authorized");
