@@ -25,6 +25,28 @@ async function signup(req, res) {
 
     const password_hash = await bcrypt.hash(password, 10);
 
+    // Normalize latitude/longitude to match DB NUMBER(9,6) precision
+    const normalizeCoord = (v) => {
+      if (v === undefined || v === null || v === '') return null;
+      const num = Number(v);
+      if (Number.isNaN(num)) return null;
+      // Round to 6 decimal places to fit NUMBER(9,6)
+      return Number(num.toFixed(6));
+    };
+
+    const latVal = normalizeCoord(lat);
+    const lngVal = normalizeCoord(lng);
+
+    // If client supplied coords but they are invalid (couldn't normalize), return 400
+    if ((lat !== undefined && lat !== null && lat !== '') && latVal === null) {
+      console.warn('Invalid latitude supplied during signup', { lat });
+      return res.status(400).json({ success: false, error: 'Invalid latitude value' });
+    }
+    if ((lng !== undefined && lng !== null && lng !== '') && lngVal === null) {
+      console.warn('Invalid longitude supplied during signup', { lng });
+      return res.status(400).json({ success: false, error: 'Invalid longitude value' });
+    }
+
     // Insert into CUSTOMERS directly
     const insertBind = {
       name: customer_name || full_name || email,
@@ -32,12 +54,23 @@ async function signup(req, res) {
       phone: phone || null,
       email,
       password_hash,
-      lat: lat || null,
-      lng: lng || null,
+      lat: latVal,
+      lng: lngVal,
       id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
     };
 
     const custSql = `INSERT INTO CUSTOMERS (customer_id, name, address, phone, email, password_hash, lat, lng) VALUES (customers_seq.NEXTVAL, :name, :address, :phone, :email, :password_hash, :lat, :lng) RETURNING customer_id INTO :id`;
+    // Debug: log bound values (avoid printing password hash contents)
+    try {
+      console.debug('signup insert bind summary', {
+        name: insertBind.name && insertBind.name.length,
+        email: insertBind.email,
+        phone: insertBind.phone && insertBind.phone.length,
+        lat: insertBind.lat,
+        lng: insertBind.lng
+      });
+    } catch (e) { /* ignore logging errors */ }
+
     const custRes = await conn.execute(custSql, insertBind, { autoCommit: true });
     const newCustomerId = custRes.outBinds.id[0];
 
@@ -64,11 +97,13 @@ async function login(req, res) {
   const conn = await pool.getConnection();
 
   try {
+    console.debug('login attempt for identifier:', email);
     // Try admin login first
     // Use a named bind so the same value can be referenced multiple times without duplicating bind values
     let q = await conn.execute(`SELECT admin_id, password_hash, username, email FROM ADMINS WHERE email = :id OR username = :id`, { id: email });
     let row = q.rows && q.rows[0];
     if (row) {
+      console.debug('admin row found for identifier', email);
       let admin_id, password_hash, usernameVal, emailVal;
       if (Array.isArray(row)) {
         [admin_id, password_hash, usernameVal, emailVal] = row;
@@ -98,6 +133,7 @@ async function login(req, res) {
     // Next, try courier login (allow identifier: phone, email, or username)
     q = await conn.execute(`SELECT courier_id, password_hash, name FROM COURIERS WHERE phone = :id OR email = :id OR username = :id`, { id: email });
     row = q.rows && q.rows[0];
+    if (row) console.debug('courier row found for identifier', email);
     if (row) {
       let courier_id, password_hash, nameVal;
       if (Array.isArray(row)) {
@@ -108,8 +144,10 @@ async function login(req, res) {
         nameVal = row.NAME ?? row.name;
       }
       if (password_hash) {
+        console.debug('courier password_hash present length:', (password_hash || '').length);
         try {
           const matchCourier = await bcrypt.compare(password, password_hash);
+          console.debug('bcrypt.compare result for courier', courier_id, matchCourier ? 'MATCH' : 'NO_MATCH');
           if (matchCourier) {
             const token = jwt.sign({ user_id: courier_id, courier_id, role: 'courier' }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
             return res.json({ success: true, token, user: { user_id: courier_id, role: 'courier', name: nameVal } });

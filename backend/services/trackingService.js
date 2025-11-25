@@ -45,7 +45,9 @@ exports.getShipmentTracking = async (trackingNumber) => {
         s.DISTANCE_KM,
         s.SERVICE_TYPE,
         c.NAME AS COURIER_NAME,
-        cust.NAME AS CUSTOMER_NAME
+          cust.NAME AS CUSTOMER_NAME,
+          cust.LAT AS CUSTOMER_LAT,
+          cust.LNG AS CUSTOMER_LNG
       FROM SHIPMENTS s
       LEFT JOIN COURIERS c ON s.COURIER_ID = c.COURIER_ID
       LEFT JOIN CUSTOMERS cust ON s.CUSTOMER_ID = cust.CUSTOMER_ID
@@ -81,14 +83,26 @@ exports.getShipmentTracking = async (trackingNumber) => {
       ...getCoordinates(shipment.ORIGIN)
     };
 
+    // If customer has explicit lat/lng, prefer that for destination coordinates
     const destination = {
       name: shipment.DESTINATION,
-      ...getCoordinates(shipment.DESTINATION)
+      lat: shipment.CUSTOMER_LAT || getCoordinates(shipment.DESTINATION).lat,
+      lng: shipment.CUSTOMER_LNG || getCoordinates(shipment.DESTINATION).lng
     };
 
     // Build route from status log
     const route = (historyResult.rows || []).map(row => {
       const location = row.LOCATION || shipment.ORIGIN;
+      // If the location refers to the customer's name, and customer coords exist, use them
+      if (location && (location === shipment.CUSTOMER_NAME) && shipment.CUSTOMER_LAT && shipment.CUSTOMER_LNG) {
+        return {
+          lat: shipment.CUSTOMER_LAT,
+          lng: shipment.CUSTOMER_LNG,
+          timestamp: row.LOG_TIME,
+          status: row.STATUS,
+          location: location
+        };
+      }
       return {
         ...getCoordinates(location),
         timestamp: row.LOG_TIME,

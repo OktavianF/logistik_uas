@@ -92,6 +92,34 @@ const Auth = () => {
         fullName: signupFullName
       });
 
+      // Basic client-side validation for coordinates to avoid server DB precision errors
+      const tryParseCoord = (v: string | number) => {
+        if (v === undefined || v === null || v === '') return undefined;
+        const n = Number(v);
+        if (Number.isNaN(n)) return NaN;
+        return n;
+      };
+
+      const latNum = tryParseCoord(signupLat as any);
+      const lngNum = tryParseCoord(signupLng as any);
+
+      if (latNum !== undefined && Number.isNaN(latNum)) {
+        toast({ title: 'Validasi Gagal', description: 'Latitude tidak valid', variant: 'destructive' });
+        return;
+      }
+      if (lngNum !== undefined && Number.isNaN(lngNum)) {
+        toast({ title: 'Validasi Gagal', description: 'Longitude tidak valid', variant: 'destructive' });
+        return;
+      }
+      if (latNum !== undefined && (latNum < -90 || latNum > 90)) {
+        toast({ title: 'Validasi Gagal', description: 'Latitude harus di antara -90 dan 90', variant: 'destructive' });
+        return;
+      }
+      if (lngNum !== undefined && (lngNum < -180 || lngNum > 180)) {
+        toast({ title: 'Validasi Gagal', description: 'Longitude harus di antara -180 dan 180', variant: 'destructive' });
+        return;
+      }
+
       setIsLoading(true);
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
@@ -103,8 +131,8 @@ const Auth = () => {
           customer_name: validated.fullName,
           address: signupAddress || null,
           phone: signupPhone || null,
-          lat: signupLat || undefined,
-          lng: signupLng || undefined
+          lat: latNum !== undefined ? Number(latNum.toFixed(6)) : undefined,
+          lng: lngNum !== undefined ? Number(lngNum.toFixed(6)) : undefined
         })
       });
 
