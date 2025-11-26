@@ -12,16 +12,18 @@ import { useToast } from '@/hooks/use-toast';
 interface Shipment {
   SHIPMENT_ID: number;
   TRACKING_NUMBER: string;
-  ORIGIN: string;
-  DESTINATION: string;
-  DELIVERY_STATUS: string;
-  DELIVERY_ESTIMATE: string;
-  SERVICE_TYPE: string;
+  ORIGIN?: string;
+  DESTINATION?: string;
+  DELIVERY_STATUS?: string;
+  DELIVERY_ESTIMATE?: string | number;
+  SERVICE_TYPE?: string;
+  [key: string]: any;
 }
 
 export default function CustomerDashboard() {
   const { role, loading: roleLoading } = useUserRole();
   const { user } = useAuth();
+  const userAny = user as any;
   const navigate = useNavigate();
   const { toast } = useToast();
   const [shipments, setShipments] = useState<Shipment[]>([]);
@@ -72,10 +74,10 @@ export default function CustomerDashboard() {
   }, [role, toast]);
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, 'default' | 'secondary' | 'destructive'> = {
+    const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'success'> = {
       'Diproses': 'secondary',
       'Dalam Pengiriman': 'default',
-      'Terkirim': 'default',
+      'Terkirim': 'success',
     };
     return <Badge variant={variants[status] || 'default'}>{status}</Badge>;
   };
@@ -111,10 +113,10 @@ export default function CustomerDashboard() {
           <h1 className="text-4xl font-bold gradient-text mb-2">Pengiriman Saya</h1>
           <p className="text-muted-foreground">Kelola dan lacak pengiriman Anda</p>
         </div>
-        <Button onClick={() => navigate('/customer/request')}>
+        {/* <Button onClick={() => navigate('/customer/request')}>
           <Plus className="mr-2 h-4 w-4" />
           Buat Permintaan
-        </Button>
+        </Button> */}
       </div>
 
       {shipments.length === 0 ? (
@@ -145,7 +147,7 @@ export default function CustomerDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
                     <h3 className="text-xl font-semibold mb-2">Informasi Pelanggan</h3>
-                    <p className="mb-1"><span className="font-medium">Nama:</span> {shipment.CUSTOMER_NAME ?? shipment.customer_name ?? (user?.name || user?.user_metadata?.full_name || '—')}</p>
+                    <p className="mb-1"><span className="font-medium">Nama:</span> {shipment.CUSTOMER_NAME ?? shipment.customer_name ?? (userAny?.name || userAny?.user_metadata?.full_name || '—')}</p>
                     <p className="mb-1"><span className="font-medium">Alamat:</span> {shipment.CUSTOMER_ADDRESS ?? shipment.customer_address ?? shipment.CUSTOMER_ADDRESS ?? '—'}</p>
                     <p className="mb-1"><span className="font-medium">Telepon:</span> {shipment.CUSTOMER_PHONE ?? shipment.customer_phone ?? shipment.PHONE ?? '—'}</p>
                   </div>

@@ -111,12 +111,12 @@ const Dashboard = () => {
   }, []);
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline", className: string }> = {
-      "Dalam Pengiriman": { variant: "default", className: "bg-info text-info-foreground" },
-      "Diproses": { variant: "secondary", className: "bg-warning text-warning-foreground" },
-      "Terkirim": { variant: "default", className: "bg-success text-success-foreground" }
+    const variants: Record<string, { variant?: "default" | "secondary" | "destructive" | "outline" | "success", className?: string }> = {
+      "Dalam Pengiriman": { variant: "default" },
+      "Diproses": { variant: "secondary" },
+      "Terkirim": { variant: "success" }
     };
-    
+
     return variants[status] || variants["Diproses"];
   };
 

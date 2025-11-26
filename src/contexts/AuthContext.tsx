@@ -14,16 +14,21 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  setUser: () => {}
+  setUser: () => {},
+  loading: true,
 });
 
 export const AuthProvider: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
-    if (!token) return;
+    if (!token) {
+      // No token — we're not authenticated, ensure loading is false so routes can redirect to /auth
+      setLoading(false);
+      return;
+    }
 
     const fetchUser = async () => {
       try {

@@ -75,10 +75,10 @@ export default function CourierDashboard() {
   }, [role, toast]);
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, 'default' | 'secondary' | 'destructive'> = {
+    const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'success'> = {
       'Diproses': 'secondary',
       'Dalam Pengiriman': 'default',
-      'Terkirim': 'default',
+      'Terkirim': 'success',
     };
     return <Badge variant={variants[status] || 'default'}>{status}</Badge>;
   };
