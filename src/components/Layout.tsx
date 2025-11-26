@@ -51,13 +51,27 @@ const [user, setUser] = useState<any>(null);
     navigate('/auth');
   };
 
-  const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-    { icon: Users, label: "Pelanggan", path: "/customers" },
-    { icon: Truck, label: "Kurir", path: "/couriers" },
-    { icon: Package, label: "Pengiriman", path: "/shipments" },
-    { icon: MapPin, label: "Tracking", path: "/tracking" }
-  ];
+  // Derive role from token payload (same logic used for displayName)
+  const role = user?.role || user?.roles || user?.role_name || null;
+
+  // Navigation per role:
+  // - courier -> only Tugas Pengiriman (/courier)
+  // - customer -> only Tracking (/tracking)
+  // - others (admin) -> full menu
+  const navItems = role === 'courier'
+    ? [ { icon: Truck, label: 'Tugas Pengiriman', path: '/courier' } ]
+    : role === 'customer'
+      ? [
+          { icon: Package, label: 'Pengiriman', path: '/customer' },
+          { icon: MapPin, label: 'Tracking', path: '/tracking' }
+        ]
+      : [
+          { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+          { icon: Users, label: "Pelanggan", path: "/customers" },
+          { icon: Truck, label: "Kurir", path: "/couriers" },
+          { icon: Package, label: "Pengiriman", path: "/shipments" },
+          { icon: MapPin, label: "Tracking", path: "/tracking" }
+        ];
 
   return (
     <div className="flex min-h-screen bg-gradient-subtle">

@@ -42,6 +42,17 @@ export default function CustomerShipmentDetail() {
   const [trackingData, setTrackingData] = useState<TrackingData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const formatEta = (shipment: any) => {
+    const est = shipment.DELIVERY_ESTIMATE ?? shipment.delivery_estimate ?? shipment.deliveryestimate ?? 0;
+    const sd = shipment.SHIPPING_DATE ?? shipment.shipping_date ?? shipment.shippingdate ?? shipment.shippingDate ?? null;
+    const days = Number(est);
+    if (!sd || !days) return '—';
+    const shipDate = new Date(sd);
+    if (isNaN(shipDate.getTime())) return '—';
+    const eta = new Date(shipDate.getTime() + days * 24 * 60 * 60 * 1000);
+    return eta.toLocaleDateString('id-ID');
+  };
+
   useEffect(() => {
     if (!roleLoading && role !== 'customer') {
       navigate('/dashboard');
@@ -127,7 +138,7 @@ export default function CustomerShipmentDetail() {
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-primary" />
                     <span className="text-sm">
-                      ETA: {new Date(shipment.DELIVERY_ESTIMATE).toLocaleDateString('id-ID')}
+                      ETA: {formatEta(shipment)}
                     </span>
                   </div>
                 </div>

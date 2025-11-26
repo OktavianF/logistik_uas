@@ -83,6 +83,17 @@ export default function CourierDashboard() {
     return <Badge variant={variants[status] || 'default'}>{status}</Badge>;
   };
 
+  const formatEta = (shipment: any) => {
+    const est = shipment.DELIVERY_ESTIMATE ?? shipment.delivery_estimate ?? shipment.deliveryestimate ?? 0;
+    const sd = shipment.SHIPPING_DATE ?? shipment.shipping_date ?? shipment.shippingdate ?? shipment.shippingDate ?? null;
+    const days = Number(est);
+    if (!sd || !days) return '—';
+    const shipDate = new Date(sd);
+    if (isNaN(shipDate.getTime())) return '—';
+    const eta = new Date(shipDate.getTime() + days * 24 * 60 * 60 * 1000);
+    return eta.toLocaleDateString('id-ID');
+  };
+
   if (roleLoading || loading) {
     return (
       <div className="container mx-auto p-6 space-y-6">
@@ -140,7 +151,7 @@ export default function CourierDashboard() {
                   <div className="flex items-center gap-3">
                     <Clock className="h-5 w-5 text-primary" />
                     <span className="text-sm">
-                      ETA: {new Date(shipment.DELIVERY_ESTIMATE).toLocaleDateString('id-ID')}
+                      ETA: {formatEta(shipment)}
                     </span>
                   </div>
 
