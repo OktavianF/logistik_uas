@@ -1,25 +1,42 @@
 const database = require("../config/database");
 const oracledb = require("oracledb");
 
-exports.getReportPerCourier = async () => {
+exports.getReportPerCourier = async (courierId, startDate, endDate) => {
   const pool = database.getPool();
   const connection = await pool.getConnection();
-  
+
   try {
+    // Bind parameters for the stored procedure
+    const binds = {
+      p_courier_id: { val: courierId, dir: oracledb.BIND_IN, type: oracledb.NUMBER },
+      p_start_date: { val: startDate || null, dir: oracledb.BIND_IN, type: oracledb.DATE },
+      p_end_date: { val: endDate || null, dir: oracledb.BIND_IN, type: oracledb.DATE },
+      p_summary: { type: oracledb.CURSOR, dir: oracledb.BIND_OUT },
+      p_details: { type: oracledb.CURSOR, dir: oracledb.BIND_OUT }
+    };
+
     const result = await connection.execute(
       `BEGIN
-         sp_report_per_courier(:cursor);
+         sp_report_per_courier(:p_courier_id, :p_start_date, :p_end_date, :p_summary, :p_details);
        END;`,
-      {
-        cursor: { type: oracledb.CURSOR, dir: oracledb.BIND_OUT }
-      }
+      binds,
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    const resultSet = result.outBinds.cursor;
-    const rows = await resultSet.getRows();
-    await resultSet.close();
-    
-    return rows;
+    // Read summary cursor
+    const summaryRs = result.outBinds.p_summary;
+    const summaryRows = await summaryRs.getRows();
+    await summaryRs.close();
+
+    // Read details cursor (may be many rows; use getRows with a reasonable limit or fetch all)
+    const detailsRs = result.outBinds.p_details;
+    const detailsRows = await detailsRs.getRows();
+    await detailsRs.close();
+
+    return {
+      summary: summaryRows,
+      details: detailsRows
+    };
   } finally {
     await connection.close();
   }

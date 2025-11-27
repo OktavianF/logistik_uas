@@ -2,7 +2,18 @@ const reportService = require("../services/reportService");
 
 exports.getReportPerCourier = async (req, res) => {
   try {
-    const report = await reportService.getReportPerCourier();
+    const courierId = Number(req.query.courier_id || req.params.courier_id);
+    if (!courierId || Number.isNaN(courierId)) {
+      return res.status(400).json({ success: false, error: 'Missing or invalid courier_id (query param or route param)' });
+    }
+
+    // Optional start/end date parameters (expected in ISO or YYYY-MM-DD)
+    const startDateRaw = req.query.start_date;
+    const endDateRaw = req.query.end_date;
+    const startDate = startDateRaw ? new Date(String(startDateRaw)) : null;
+    const endDate = endDateRaw ? new Date(String(endDateRaw)) : null;
+
+    const report = await reportService.getReportPerCourier(courierId, startDate, endDate);
     res.json({
       success: true,
       data: report,

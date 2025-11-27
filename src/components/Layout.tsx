@@ -70,6 +70,7 @@ const [user, setUser] = useState<any>(null);
           { icon: Users, label: "Pelanggan", path: "/customers" },
           { icon: Truck, label: "Kurir", path: "/couriers" },
           { icon: Package, label: "Pengiriman", path: "/shipments" },
+          { icon: Truck, label: "Laporan Kurir", path: "/reports/per-courier" },
           { icon: MapPin, label: "Tracking", path: "/tracking" }
         ];
 
