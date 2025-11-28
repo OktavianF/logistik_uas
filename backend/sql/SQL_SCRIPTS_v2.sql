@@ -176,6 +176,77 @@ END;
 / 
 
 -- ============================
+-- Stored Procedure: report per courier
+-- Returns two SYS_REFCURSORs:
+--  - summary: one-row summary for the courier (total shipments, totals, counts by status, avg estimate)
+--  - details: list of shipments assigned to the courier in the optional date range
+-- Parameters:
+--  p_courier_id IN NUMBER (mandatory) - courier id to report on
+--  p_start_date IN DATE (optional) - start of shipping_date range (inclusive)
+--  p_end_date IN DATE (optional) - end of shipping_date range (inclusive)
+--  p_summary OUT SYS_REFCURSOR
+--  p_details OUT SYS_REFCURSOR
+-- Usage example (SQL*Plus / SQL Developer):
+-- VARIABLE rc1 REFCURSOR
+-- VARIABLE rc2 REFCURSOR
+-- EXEC sp_report_per_courier(1, TO_DATE('2025-01-01','YYYY-MM-DD'), TO_DATE('2025-12-31','YYYY-MM-DD'), :rc1, :rc2);
+-- PRINT rc1; PRINT rc2;
+-- ============================
+CREATE OR REPLACE PROCEDURE sp_report_per_courier(
+  p_courier_id IN NUMBER,
+  p_start_date IN DATE,
+  p_end_date IN DATE,
+  p_summary OUT SYS_REFCURSOR,
+  p_details OUT SYS_REFCURSOR
+) IS
+BEGIN
+  OPEN p_summary FOR
+    SELECT
+      c.courier_id,
+      c.name AS courier_name,
+      COUNT(s.shipment_id) AS total_shipments,
+      NVL(SUM(s.distance_km),0) AS total_distance_km,
+      SUM(CASE WHEN s.delivery_status = 'Terkirim' THEN 1 ELSE 0 END) AS delivered_count,
+      SUM(CASE WHEN s.delivery_status = 'Dalam Pengiriman' THEN 1 ELSE 0 END) AS in_transit_count,
+      SUM(CASE WHEN s.delivery_status = 'Diproses' THEN 1 ELSE 0 END) AS pending_count,
+      ROUND(NVL(AVG(s.delivery_estimate),0),2) AS avg_estimate_days
+    FROM COURIERS c
+    LEFT JOIN SHIPMENTS s
+      ON c.courier_id = s.courier_id
+      AND (p_start_date IS NULL OR s.shipping_date >= p_start_date)
+      AND (p_end_date IS NULL OR s.shipping_date <= p_end_date)
+    WHERE c.courier_id = p_courier_id
+    GROUP BY c.courier_id, c.name;
+
+  OPEN p_details FOR
+    SELECT
+      s.shipment_id,
+      s.tracking_number,
+      s.customer_id,
+      cu.name AS customer_name,
+      s.origin,
+      s.destination,
+      s.distance_km,
+      s.service_type,
+      s.shipping_date,
+      s.delivery_estimate,
+      s.delivery_status,
+      s.updated_at
+    FROM SHIPMENTS s
+    LEFT JOIN CUSTOMERS cu ON s.customer_id = cu.customer_id
+    WHERE s.courier_id = p_courier_id
+      AND (p_start_date IS NULL OR s.shipping_date >= p_start_date)
+      AND (p_end_date IS NULL OR s.shipping_date <= p_end_date)
+    ORDER BY s.shipping_date DESC;
+
+EXCEPTION
+  WHEN OTHERS THEN
+    -- In case of error, raise application error with message
+    RAISE_APPLICATION_ERROR(-20001, 'sp_report_per_courier failed: ' || SQLERRM);
+END sp_report_per_courier;
+/
+
+-- ============================
 -- Trigger: auto-update status when courier is assigned
 -- Also insert into STATUS_LOG
 -- ============================

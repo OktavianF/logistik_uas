@@ -218,38 +218,7 @@ const Tracking = () => {
               </CardContent>
             </Card>
 
-            <Card className="shadow-elegant hover-lift border-none">
-              <CardHeader className="bg-gradient-to-r from-primary/5 to-accent/5">
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary" />
-                  Timeline Pengiriman
-                </CardTitle>
-                <CardDescription>Riwayat perjalanan paket Anda</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {shipmentData.timeline.map((item: any, index: number) => (
-                    <div key={index} className="flex gap-4">
-                      <div className="flex flex-col items-center">
-                        <div className={`rounded-full p-2 ${getStatusColor(item.status)}`}>
-                          <CheckCircle2 className="h-4 w-4 text-white" />
-                        </div>
-                        {index < shipmentData.timeline.length - 1 && (
-                          <div className="w-0.5 h-12 bg-border mt-2" />
-                        )}
-                      </div>
-                      <div className="flex-1 pb-8">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-foreground">{item.status}</span>
-                          <Badge variant="outline" className="text-xs">{item.location}</Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{item.date}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            {/* Timeline Pengiriman section removed per request */}
           </div>
         )}
       </div>

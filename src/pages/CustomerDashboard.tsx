@@ -12,16 +12,18 @@ import { useToast } from '@/hooks/use-toast';
 interface Shipment {
   SHIPMENT_ID: number;
   TRACKING_NUMBER: string;
-  ORIGIN: string;
-  DESTINATION: string;
-  DELIVERY_STATUS: string;
-  DELIVERY_ESTIMATE: string;
-  SERVICE_TYPE: string;
+  ORIGIN?: string;
+  DESTINATION?: string;
+  DELIVERY_STATUS?: string;
+  DELIVERY_ESTIMATE?: string | number;
+  SERVICE_TYPE?: string;
+  [key: string]: any;
 }
 
 export default function CustomerDashboard() {
   const { role, loading: roleLoading } = useUserRole();
   const { user } = useAuth();
+  const userAny = user as any;
   const navigate = useNavigate();
   const { toast } = useToast();
   const [shipments, setShipments] = useState<Shipment[]>([]);
@@ -72,12 +74,23 @@ export default function CustomerDashboard() {
   }, [role, toast]);
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, 'default' | 'secondary' | 'destructive'> = {
+    const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'success'> = {
       'Diproses': 'secondary',
       'Dalam Pengiriman': 'default',
-      'Terkirim': 'default',
+      'Terkirim': 'success',
     };
     return <Badge variant={variants[status] || 'default'}>{status}</Badge>;
+  };
+
+  const formatEta = (shipment: any) => {
+    const est = shipment.DELIVERY_ESTIMATE ?? shipment.delivery_estimate ?? shipment.deliveryestimate ?? 0;
+    const sd = shipment.SHIPPING_DATE ?? shipment.shipping_date ?? shipment.shippingdate ?? shipment.shippingDate ?? null;
+    const days = Number(est);
+    if (!sd || !days) return '—';
+    const shipDate = new Date(sd);
+    if (isNaN(shipDate.getTime())) return '—';
+    const eta = new Date(shipDate.getTime() + days * 24 * 60 * 60 * 1000);
+    return eta.toLocaleDateString('id-ID');
   };
 
   if (roleLoading || loading) {
@@ -100,10 +113,10 @@ export default function CustomerDashboard() {
           <h1 className="text-4xl font-bold gradient-text mb-2">Pengiriman Saya</h1>
           <p className="text-muted-foreground">Kelola dan lacak pengiriman Anda</p>
         </div>
-        <Button onClick={() => navigate('/customer/request')}>
+        {/* <Button onClick={() => navigate('/customer/request')}>
           <Plus className="mr-2 h-4 w-4" />
           Buat Permintaan
-        </Button>
+        </Button> */}
       </div>
 
       {shipments.length === 0 ? (
@@ -124,32 +137,32 @@ export default function CustomerDashboard() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
-                    <CardTitle className="text-xl">{shipment.TRACKING_NUMBER}</CardTitle>
-                    <CardDescription>{shipment.SERVICE_TYPE}</CardDescription>
+                    <CardTitle className="text-2xl font-extrabold">{shipment.TRACKING_NUMBER}</CardTitle>
+                    <CardDescription>Detail Pengiriman</CardDescription>
                   </div>
                   {getStatusBadge(shipment.DELIVERY_STATUS)}
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <MapPin className="h-5 w-5 text-primary mt-0.5" />
-                    <div>
-                      <p className="text-sm">
-                        <span className="font-medium">{shipment.ORIGIN}</span> → <span className="font-medium">{shipment.DESTINATION}</span>
-                      </p>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">Informasi Pelanggan</h3>
+                    <p className="mb-1"><span className="font-medium">Nama:</span> {shipment.CUSTOMER_NAME ?? shipment.customer_name ?? (userAny?.name || userAny?.user_metadata?.full_name || '—')}</p>
+                    <p className="mb-1"><span className="font-medium">Alamat:</span> {shipment.CUSTOMER_ADDRESS ?? shipment.customer_address ?? shipment.CUSTOMER_ADDRESS ?? '—'}</p>
+                    <p className="mb-1"><span className="font-medium">Telepon:</span> {shipment.CUSTOMER_PHONE ?? shipment.customer_phone ?? shipment.PHONE ?? '—'}</p>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <Clock className="h-5 w-5 text-primary" />
-                    <span className="text-sm">
-                      ETA: {new Date(shipment.DELIVERY_ESTIMATE).toLocaleDateString('id-ID')}
-                    </span>
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">Detail Rute</h3>
+                    <p className="mb-1"><span className="font-medium">Asal:</span> {shipment.ORIGIN ?? shipment.origin ?? '—'}</p>
+                    <p className="mb-1"><span className="font-medium">Tujuan:</span> {shipment.DESTINATION ?? shipment.destination ?? '—'}</p>
+                    <p className="mb-1"><span className="font-medium">ETA:</span> {formatEta(shipment)}</p>
                   </div>
+                </div>
 
+                <div className="mt-6">
                   <Button
-                    onClick={() => navigate(`/customer/shipments/${shipment.SHIPMENT_ID}`)}
+                    onClick={() => navigate(`/tracking`)}
                     className="w-full"
                     variant="outline"
                   >

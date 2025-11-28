@@ -217,10 +217,10 @@ const Shipments = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { className: string }> = {
-      "Dalam Pengiriman": { className: "bg-info text-info-foreground" },
-      "Diproses": { className: "bg-warning text-warning-foreground" },
-      "Terkirim": { className: "bg-success text-success-foreground" }
+    const variants: Record<string, { variant?: "default" | "secondary" | "destructive" | "outline" | "success", className?: string }> = {
+      "Dalam Pengiriman": { variant: "default" },
+      "Diproses": { variant: "secondary" },
+      "Terkirim": { variant: "success" }
     };
     return variants[status] || variants["Diproses"];
   };

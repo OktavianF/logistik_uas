@@ -38,6 +38,17 @@ export default function CourierShipmentDetail() {
   const [notes, setNotes] = useState('');
   const [updating, setUpdating] = useState(false);
 
+  const formatEta = (shipment: any) => {
+    const est = shipment.DELIVERY_ESTIMATE ?? shipment.delivery_estimate ?? shipment.deliveryestimate ?? 0;
+    const sd = shipment.SHIPPING_DATE ?? shipment.shipping_date ?? shipment.shippingdate ?? shipment.shippingDate ?? null;
+    const days = Number(est);
+    if (!sd || !days) return '—';
+    const shipDate = new Date(sd);
+    if (isNaN(shipDate.getTime())) return '—';
+    const eta = new Date(shipDate.getTime() + days * 24 * 60 * 60 * 1000);
+    return eta.toLocaleDateString('id-ID');
+  };
+
   useEffect(() => {
     if (!roleLoading && role !== 'courier') {
       navigate('/dashboard');
@@ -158,13 +169,13 @@ export default function CourierShipmentDetail() {
                 <p className="text-sm">Asal: {shipment.ORIGIN}</p>
                 <p className="text-sm">Tujuan: {shipment.DESTINATION}</p>
                 <p className="text-sm">
-                  ETA: {new Date(shipment.DELIVERY_ESTIMATE).toLocaleDateString('id-ID')}
+                  ETA: {formatEta(shipment)}
                 </p>
               </div>
             </div>
 
             <div>
-              <h3 className="font-semibold mb-3">Timeline Status</h3>
+              <h3 className="font-semibold mb-3"></h3>
               <div className="space-y-3">
                 {shipment.status_history?.map((history, idx) => (
                   <div key={idx} className="flex gap-3">

@@ -13,7 +13,7 @@ exports.getAllShipments = async (userId) => {
         `SELECT s.shipment_id, s.tracking_number, s.customer_id, s.courier_id,
                 s.origin, s.destination, s.distance_km, s.service_type,
                 s.shipping_date, s.delivery_estimate, s.delivery_status,
-                c.name as customer_name,
+                c.name as customer_name, c.address as customer_address, c.phone as customer_phone,
                 co.name as courier_name
          FROM SHIPMENTS s
          LEFT JOIN CUSTOMERS c ON s.customer_id = c.customer_id
@@ -27,7 +27,7 @@ exports.getAllShipments = async (userId) => {
         `SELECT s.shipment_id, s.tracking_number, s.customer_id, s.courier_id,
                 s.origin, s.destination, s.distance_km, s.service_type,
                 s.shipping_date, s.delivery_estimate, s.delivery_status,
-                c.name as customer_name,
+                c.name as customer_name, c.address as customer_address, c.phone as customer_phone,
                 co.name as courier_name
          FROM SHIPMENTS s
          LEFT JOIN CUSTOMERS c ON s.customer_id = c.customer_id

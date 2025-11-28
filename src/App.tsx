@@ -20,6 +20,7 @@ import NewShipment from "./pages/NewShipment";
 import RequestShipment from "./pages/RequestShipment";
 import CustomerShipmentDetail from "./pages/CustomerShipmentDetail";
 import PublicTracking from "./pages/PublicTracking";
+import AdminReportPerCourier from "./pages/AdminReportPerCourier";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,7 +41,8 @@ const App = () => (
               <Route path="/customers" element={<ProtectedRoute allowedRoles={["admin"]}><Customers /></ProtectedRoute>} />
               <Route path="/couriers" element={<ProtectedRoute allowedRoles={["admin"]}><Couriers /></ProtectedRoute>} />
               <Route path="/shipments" element={<ProtectedRoute allowedRoles={["admin"]}><Shipments /></ProtectedRoute>} />
-              <Route path="/tracking" element={<ProtectedRoute allowedRoles={["admin"]}><Tracking /></ProtectedRoute>} />
+              <Route path="/reports/per-courier" element={<ProtectedRoute allowedRoles={["admin"]}><AdminReportPerCourier /></ProtectedRoute>} />
+              <Route path="/tracking" element={<ProtectedRoute allowedRoles={["admin","customer"]}><Tracking /></ProtectedRoute>} />
               <Route path="/courier" element={<ProtectedRoute allowedRoles={["courier"]}><CourierDashboard /></ProtectedRoute>} />
               <Route path="/courier/shipments/:id" element={<ProtectedRoute allowedRoles={["courier"]}><CourierShipmentDetail /></ProtectedRoute>} />
               <Route path="/customer" element={<ProtectedRoute allowedRoles={["customer"]}><CustomerDashboard /></ProtectedRoute>} />

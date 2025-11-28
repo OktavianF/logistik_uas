@@ -147,59 +147,7 @@ const TrackingMap = ({
 
   return (
     <div className="space-y-4">
-      {/* Animation Controls */}
-      <div className="flex items-center gap-4 p-4 bg-card rounded-lg border border-border shadow-sm">
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={handlePlayPause}
-            variant="default"
-            size="sm"
-            className="gradient-primary shadow-md hover:shadow-lg transition-all duration-200"
-          >
-            {isAnimationPlaying ? (
-              <>
-                <Pause className="h-4 w-4 mr-2" />
-                Pause
-              </>
-            ) : (
-              <>
-                <Play className="h-4 w-4 mr-2" />
-                {showAnimation ? 'Resume' : 'Animate Route'}
-              </>
-            )}
-          </Button>
-          
-          <Button
-            onClick={handleReset}
-            variant="outline"
-            size="sm"
-            disabled={!showAnimation}
-          >
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Reset
-          </Button>
-        </div>
-
-        <div className="flex-1 flex items-center gap-3">
-          <Gauge className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground whitespace-nowrap">Kecepatan:</span>
-          <Slider
-            value={[animationSpeed]}
-            onValueChange={(value) => setAnimationSpeed(value[0])}
-            min={0.5}
-            max={3}
-            step={0.5}
-            className="w-32"
-          />
-          <span className="text-sm font-medium min-w-[3rem]">{animationSpeed}x</span>
-        </div>
-
-        {showAnimation && (
-          <div className="text-sm text-muted-foreground">
-            Progress: <span className="font-semibold text-foreground">{Math.round(animationProgress * 100)}%</span>
-          </div>
-        )}
-      </div>
+      {/* Animation controls removed per request */}
 
       {/* Map Container */}
       <div className="w-full h-[500px] rounded-lg overflow-hidden border-2 border-border shadow-elegant">
