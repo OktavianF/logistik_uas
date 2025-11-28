@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,31 @@ export default function RequestShipment() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const loadCustomer = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const headers: Record<string,string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const res = await fetch('/api/customers', { headers, cache: 'no-store' });
+        if (!res.ok) return;
+        const body = await res.json();
+        const data = Array.isArray(body?.data) ? body.data[0] : body?.data;
+        if (!data) return;
+        const address = data.ADDRESS ?? data.address ?? '';
+        const lat = data.LAT ?? data.lat ?? data.latitude ?? '';
+        const lng = data.LNG ?? data.lng ?? data.longitude ?? '';
+        if (address) setPickupAddress(address);
+        if (lat !== undefined && lat !== null) setPickupLat(lat);
+        if (lng !== undefined && lng !== null) setPickupLng(lng);
+      } catch (err) {
+        console.warn('Failed to load customer data', err);
+      }
+    };
+
+    loadCustomer();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,37 +91,8 @@ export default function RequestShipment() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label>Alamat Penjemputan</Label>
-              <Input value={pickupAddress} onChange={(e) => setPickupAddress(e.target.value)} placeholder="Alamat penjemputan" />
-            </div>
+            {/* Pickup fields removed from form UI - values are sourced from customer's record */}
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label>Lat (penjemputan)</Label>
-                <Input type="number" step="0.000001" value={pickupLat as any} onChange={(e) => setPickupLat(e.target.value)} />
-              </div>
-              <div>
-                <Label>Lng (penjemputan)</Label>
-                <Input type="number" step="0.000001" value={pickupLng as any} onChange={(e) => setPickupLng(e.target.value)} />
-              </div>
-            </div>
-
-            <div>
-              <Label>Alamat Tujuan</Label>
-              <Input value={dropoffAddress} onChange={(e) => setDropoffAddress(e.target.value)} placeholder="Alamat tujuan" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label>Lat (tujuan)</Label>
-                <Input type="number" step="0.000001" value={dropoffLat as any} onChange={(e) => setDropoffLat(e.target.value)} />
-              </div>
-              <div>
-                <Label>Lng (tujuan)</Label>
-                <Input type="number" step="0.000001" value={dropoffLng as any} onChange={(e) => setDropoffLng(e.target.value)} />
-              </div>
-            </div>
 
             <div>
               <Label>Jenis Layanan</Label>
